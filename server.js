@@ -188,6 +188,21 @@ const postSchema = new mongoose.Schema({
   userId: mongoose.Schema.Types.ObjectId,
   alias: String,
   content: String,
+  image: String,
+  reactions: {
+    like: { type: Number, default: 0 },
+    love: { type: Number, default: 0 },
+    haha: { type: Number, default: 0 },
+    wow: { type: Number, default: 0 },
+    sad: { type: Number, default: 0 },
+    angry: { type: Number, default: 0 },
+  },
+  comments: [{
+    userId: mongoose.Schema.Types.ObjectId,
+    alias: String,
+    text: String,
+    createdAt: { type: Date, default: Date.now }
+  }],
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -464,12 +479,17 @@ app.get("/logout", (req, res) => {
 app.get("/newsfeed", async (req, res) => {
   try {
     const posts = await Post.find().sort({ createdAt: -1 });
-    const postCards = posts.map(p => `<div class="card"><h3>${escapeHtml(p.alias)}</h3><p>${escapeHtml(p.content)}</p><small>${new Date(p.createdAt).toLocaleString()}</small></div>`).join("");
+    const postCards = posts.map(p => {
+      const reactionButtons = ['like','love','haha','wow','sad','angry'].map(type => `<form method="POST" style="display:inline;margin-right:4px;" action="/newsfeed/reaction"><input type="hidden" name="postId" value="${p._id}"/><input type="hidden" name="reaction" value="${type}"/><button class="btn btn-gray" type="submit" style="padding:4px 8px;font-size:12px;">${type.charAt(0).toUpperCase()+type.slice(1)} ${p.reactions?.[type]||0}</button></form>`).join('');
+      const commentsHtml = (p.comments || []).map(c => `<div class="comment"><strong>${escapeHtml(c.alias)}:</strong> ${escapeHtml(c.text)} <small style="color:#777;">${new Date(c.createdAt).toLocaleTimeString()}</small></div>`).join('');
+      const img = p.image ? `<img src="/uploads/${p.image}" alt="post-image" style="max-width:100%;border-radius:8px;margin:8px 0;"/>` : '';
+      return `<div class="card"><h3>${escapeHtml(p.alias)}</h3><p>${escapeHtml(p.content)}</p>${img}<div>${reactionButtons}</div><div style="margin-top:8px;"><form method="POST" action="/newsfeed/comment"><input type="hidden" name="postId" value="${p._id}"/><input name="text" placeholder="Add a comment..." required style="width:70%;padding:8px;border:1px solid #b0b8c1;border-radius:6px;"/><button class="btn btn-blue" type="submit" style="margin-left:4px;padding:8px 12px;">Comment</button></form></div><div style="margin-top:8px;">${commentsHtml}</div><small>${new Date(p.createdAt).toLocaleString()}</small></div>`;
+    }).join("");
     let postForm = '';
     if (req.session.profileId) {
       const profile = await Profile.findById(req.session.profileId);
       if (profile) {
-        postForm = `<div class="form"><h2>Post a Status</h2><form method="POST" action="/newsfeed"><textarea name="content" placeholder="What's on your mind?" required></textarea><button type="submit">Post</button></form></div>`;
+        postForm = `<div class="form"><h2>Post a Status</h2><form method="POST" action="/newsfeed" enctype="multipart/form-data"><textarea name="content" placeholder="What's on your mind?" required></textarea><label>Attach image (optional)</label><input type="file" name="image" accept="image/*"/><button type="submit">Post</button></form></div>`;
       }
     }
     const html = `<div class="hero"><h1>📰 News Feed</h1><p>Share your thoughts and see what others are posting.</p></div>${postForm}<div class="grid">${postCards || '<div class="form"><p>No posts yet.</p></div>'}</div>`;
@@ -480,19 +500,79 @@ app.get("/newsfeed", async (req, res) => {
   }
 });
 
-app.post("/newsfeed", async (req, res) => {
+app.post("/newsfeed", upload.single('image'), async (req, res) => {
   try {
     if (!req.session.profileId) return res.status(401).send("Please login to post");
     const profile = await Profile.findById(req.session.profileId);
     if (!profile) return res.status(404).send("Profile not found");
     const { content } = req.body;
     if (!content || !content.trim()) return res.status(400).send("Content required");
-    const post = new Post({ userId: profile._id, alias: profile.alias, content: content.trim() });
+
+    let imagePath = null;
+    if (req.file) {
+      const filename = Date.now() + '-' + (req.file.originalname || 'img').replace(/\s+/g, '_');
+      const dest = path.join('uploads', filename);
+      await fs.promises.writeFile(dest, req.file.buffer);
+      imagePath = filename;
+    }
+
+    const post = new Post({
+      userId: profile._id,
+      alias: profile.alias,
+      content: content.trim(),
+      image: imagePath,
+      reactions: { like: 0, love: 0, haha: 0, wow: 0, sad: 0, angry: 0 },
+      comments: []
+    });
     await post.save();
     res.redirect("/newsfeed");
   } catch (err) {
     console.error("Error posting:", err);
     res.status(500).send("Error posting");
+  }
+});
+
+app.post("/newsfeed/comment", async (req, res) => {
+  try {
+    if (!req.session.profileId) return res.status(401).send("Please login to comment");
+    const profile = await Profile.findById(req.session.profileId);
+    if (!profile) return res.status(404).send("Profile not found");
+    const { postId, text } = req.body;
+    if (!postId || !text || !text.trim()) return res.status(400).send("Invalid comment");
+    const post = await Post.findById(postId);
+    if (!post) return res.status(404).send("Post not found");
+
+    post.comments = post.comments || [];
+    post.comments.push({ userId: profile._id, alias: profile.alias, text: text.trim(), createdAt: new Date() });
+    await post.save();
+
+    await new Notification({ userId: post.userId, fromId: profile._id, type: 'comment', message: `New comment on your post from ${profile.alias}` }).save();
+    res.redirect('/newsfeed');
+  } catch (err) {
+    console.error('Error commenting on post:', err);
+    res.status(500).send('Error commenting');
+  }
+});
+
+app.post("/newsfeed/reaction", async (req, res) => {
+  try {
+    if (!req.session.profileId) return res.status(401).send("Please login to react");
+    const profile = await Profile.findById(req.session.profileId);
+    if (!profile) return res.status(404).send("Profile not found");
+    const { postId, reaction } = req.body;
+    if (!postId || !reaction) return res.status(400).send("Invalid reaction");
+    const post = await Post.findById(postId);
+    if (!post) return res.status(404).send("Post not found");
+    if (!post.reactions) post.reactions = { like: 0, love: 0, haha: 0, wow: 0, sad: 0, angry: 0 };
+    if (post.reactions[reaction] == null) return res.status(400).send("Unknown reaction type");
+    post.reactions[reaction] += 1;
+    await post.save();
+
+    await new Notification({ userId: post.userId, fromId: profile._id, type: 'like', message: `${profile.alias} reacted ${reaction} on your post` }).save();
+    res.redirect('/newsfeed');
+  } catch (err) {
+    console.error('Error reacting to post:', err);
+    res.status(500).send('Error reacting');
   }
 });
 
