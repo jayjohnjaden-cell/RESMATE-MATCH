@@ -134,7 +134,8 @@ app.get('/health', (req, res) => {
 
 // Define schemas
 const profileSchema = new mongoose.Schema({
-  mode: String,
+  mode: { type: String, enum: ['date','friend','both'], default: 'date' },
+  gender: { type: String, enum: ['male','female','nonbinary','other'], default: 'other' },
   username: { type: String, unique: true, sparse: true },
   alias: String,
   password: String,
@@ -151,13 +152,6 @@ const profileSchema = new mongoose.Schema({
 const likeSchema = new mongoose.Schema({
   fromId: mongoose.Schema.Types.ObjectId,
   toId: mongoose.Schema.Types.ObjectId,
-});
-
-const viewRequestSchema = new mongoose.Schema({
-  fromId: mongoose.Schema.Types.ObjectId,
-  toId: mongoose.Schema.Types.ObjectId,
-  status: { type: String, enum: ['pending', 'approved', 'denied'], default: 'pending' },
-  createdAt: { type: Date, default: Date.now },
 });
 
 const messageRequestSchema = new mongoose.Schema({
@@ -179,6 +173,7 @@ const messageSchema = new mongoose.Schema({
   senderAlias: String,
   text: String,
   createdAt: { type: Date, default: Date.now },
+  read: { type: Boolean, default: false },
 });
 
 const notificationSchema = new mongoose.Schema({
@@ -196,7 +191,6 @@ const postSchema = new mongoose.Schema({
 
 const Profile = mongoose.model("Profile", profileSchema);
 const Like = mongoose.model("Like", likeSchema);
-const ViewRequest = mongoose.model("ViewRequest", viewRequestSchema);
 const MessageRequest = mongoose.model("MessageRequest", messageRequestSchema);
 const Match = mongoose.model("Match", matchSchema);
 const Message = mongoose.model("Message", messageSchema);
@@ -239,22 +233,30 @@ function calculateMatchScore(a, b) {
 }
 
 async function getCounts(userId) {
-  const [likes, notifications, viewRequests, messageRequests] = await Promise.all([
+  const [likes, notifications, messageRequests, unopenedMessages] = await Promise.all([
     Like.countDocuments({ toId: userId }),
     Notification.countDocuments({ userId }),
-    ViewRequest.countDocuments({ toId: userId, status: 'pending' }),
-    MessageRequest.countDocuments({ toId: userId, status: 'pending' })
+    MessageRequest.countDocuments({ toId: userId, status: 'pending' }),
+    Message.countDocuments({ 
+      $or: [
+        { roomId: new RegExp(`_${userId}$`) },
+        { roomId: new RegExp(`^room_${userId}_`) }
+      ],
+      senderId: { $ne: userId },
+      read: false
+    })
   ]);
   return {
     likes,
     notifications,
-    requests: viewRequests + messageRequests
+    requests: messageRequests,
+    unopenedMessages
   };
 }
 
 function pageShell(title, body, profileId = null, counts = {}) {
-  const nav = profileId ? `<nav style="background:white;border-radius:12px;padding:12px;margin-bottom:24px;box-shadow:0 4px 12px rgba(0,0,0,.1);"><a class="btn" href="/">Home</a><a class="btn" href="/discover/${profileId}">Discover</a><a class="btn" href="/matches/${profileId}">Matches</a><a class="btn" href="/profile/${profileId}">My Profile</a><a class="btn" href="/newsfeed">News Feed</a><a class="btn btn-pink" href="/requests/${profileId}">Requests (${counts.requests || 0})</a><a class="btn btn-blue" href="/notifications/${profileId}">Notifications (${counts.notifications || 0})</a></nav>` : `<nav style="background:white;border-radius:12px;padding:12px;margin-bottom:24px;box-shadow:0 4px 12px rgba(0,0,0,.1);"><a class="btn" href="/">Home</a><a class="btn" href="/newsfeed">News Feed</a></nav>`;
-  return `<!DOCTYPE html><html><head><title>${escapeHtml(title)}</title><meta name="viewport" content="width=device-width, initial-scale=1.0"/><style>*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#ff9a9e,#fad0c4,#fbc2eb,#a6c1ee);min-height:100vh;padding:24px;color:#111}a{color:#093b70;text-decoration:none}a:hover{text-decoration:underline}.container{max-width:1150px;margin:auto}.hero{background:rgba(255,255,255,.3);color:#1f2937;border-radius:26px;padding:28px;box-shadow:0 12px 30px rgba(0,0,0,.2);backdrop-filter:blur(8px);margin-bottom:24px}.hero h1{margin:0 0 10px;font-size:2.2rem}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}.card,.form,.feature,.chat-wrap{background:white;border-radius:22px;padding:18px;box-shadow:0 16px 30px rgba(15,23,42,.15)}.feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;margin:22px 0}.card{position:relative;border:1px solid #e5e7eb}.card img,.profile-cover{width:100%;border-radius:16px;margin-bottom:12px;display:block}.tag,.pill{display:inline-block;padding:6px 12px;border-radius:999px;color:white;font-size:12px;font-weight:bold}.tag{position:absolute;top:16px;right:16px}.date{background:#ef4444}.friend{background:#0ea5e9}input,textarea,select{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:12px;margin-top:8px;margin-bottom:16px;font-size:15px;outline:none;transition:all .2s ease}input:focus,textarea:focus,select:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.2)}textarea{min-height:140px;resize:vertical}.btn,button{background:#1f2937;color:white;border:none;border-radius:12px;padding:12px 16px;text-decoration:none;cursor:pointer;display:inline-block;margin-right:8px;margin-top:8px;transition:transform .1s ease,box-shadow .1s ease}.btn:hover,button:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(15,23,42,.2)}.btn-pink{background:#ec4899}.btn-blue{background:#0284c7}.btn-gray{background:#6b7280}.top-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}#messages{height:350px;overflow:auto;background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:14px;margin-bottom:14px}.msg{margin-bottom:10px;padding:10px 12px;background:#fff;border-radius:12px;border:1px solid #e8f0fe}.chat-row{display:flex;gap:10px}.chat-row input{margin:0;flex:1}@media (max-width:700px){body{padding:14px}.hero h1{font-size:1.7rem}.chat-row{flex-direction:column}}.blurred{filter:blur(5px)}.tags{margin:10px 0}.tags .pill{margin-right:5px}.footer-custom{margin-top:24px;padding:10px;color:#1f2937;text-align:center;font-weight:700}</style></head><body><div class="container">${nav}${body}</div><div class="footer-custom">BY JABULANI SHIBAMBO @0725601834 CAPITEC ACCEPTED</div></body></html>`;
+  const nav = profileId ? `<nav style="background:#f0f2f5;border-bottom:1px solid #dadde1;padding:0;margin-bottom:24px;display:flex;"><a class="fb-tab ${title === 'Home' ? 'active' : ''}" href="/">🏠 Home</a><a class="fb-tab ${title === 'Discover' ? 'active' : ''}" href="/discover/${profileId}">🔍 Discover</a><a class="fb-tab ${title === 'Matches' ? 'active' : ''}" href="/matches/${profileId}">❤️ Matches</a><a class="fb-tab ${title.includes('Profile') ? 'active' : ''}" href="/profile/${profileId}">👤 Profile</a><a class="fb-tab ${title === 'News Feed' ? 'active' : ''}" href="/newsfeed">📰 Feed</a><a class="fb-tab ${title === 'Requests' ? 'active' : ''}" href="/requests/${profileId}">📨 Requests ${counts.requests ? `(${counts.requests})` : ''}</a><a class="fb-tab ${title === 'Notifications' ? 'active' : ''}" href="/notifications/${profileId}">🔔 Notifications ${counts.notifications ? `(${counts.notifications})` : ''}</a><a class="fb-tab ${title === 'Chat' ? 'active' : ''}" href="/chat/${profileId}/${profileId}">💬 Messages ${counts.unopenedMessages ? `(${counts.unopenedMessages})` : ''}</a></nav>` : `<nav style="background:#f0f2f5;border-bottom:1px solid #dadde1;padding:0;margin-bottom:24px;display:flex;"><a class="fb-tab" href="/">🏠 Home</a><a class="fb-tab" href="/newsfeed">📰 News Feed</a></nav>`;
+  return `<!DOCTYPE html><html><head><title>${escapeHtml(title)}</title><meta name="viewport" content="width=device-width, initial-scale=1.0"/><style>*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#ff9a9e,#fad0c4,#fbc2eb,#a6c1ee);min-height:100vh;padding:24px;color:#111}a{color:#093b70;text-decoration:none}a:hover{text-decoration:underline}.container{max-width:1150px;margin:auto}.hero{background:rgba(255,255,255,.3);color:#1f2937;border-radius:26px;padding:28px;box-shadow:0 12px 30px rgba(0,0,0,.2);backdrop-filter:blur(8px);margin-bottom:24px}.hero h1{margin:0 0 10px;font-size:2.2rem}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}.card,.form,.feature,.chat-wrap{background:white;border-radius:22px;padding:18px;box-shadow:0 16px 30px rgba(15,23,42,.15)}.feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;margin:22px 0}.card{position:relative;border:1px solid #e5e7eb}.card img,.profile-cover{width:100%;border-radius:16px;margin-bottom:12px;display:block}.tag,.pill{display:inline-block;padding:6px 12px;border-radius:999px;color:white;font-size:12px;font-weight:bold}.tag{position:absolute;top:16px;right:16px}.date{background:#ef4444}.friend{background:#0ea5e9}input,textarea,select{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:12px;margin-top:8px;margin-bottom:16px;font-size:15px;outline:none;transition:all .2s ease}input:focus,textarea:focus,select:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.2)}textarea{min-height:140px;resize:vertical}.btn,button{background:#1f2937;color:white;border:none;border-radius:12px;padding:12px 16px;text-decoration:none;cursor:pointer;display:inline-block;margin-right:8px;margin-top:8px;transition:transform .1s ease,box-shadow .1s ease}.btn:hover,button:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(15,23,42,.2)}.btn-pink{background:#ec4899}.btn-blue{background:#0284c7}.btn-gray{background:#6b7280}.top-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}#messages{height:350px;overflow:auto;background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:14px;margin-bottom:14px}.msg{margin-bottom:10px;padding:10px 12px;background:#fff;border-radius:12px;border:1px solid #e8f0fe}.chat-row{display:flex;gap:10px}.chat-row input{margin:0;flex:1}@media (max-width:700px){body{padding:14px}.hero h1{font-size:1.7rem}.chat-row{flex-direction:column}}.blurred{filter:blur(5px)}.tags{margin:10px 0}.tags .pill{margin-right:5px}.footer-custom{margin-top:24px;padding:10px;color:#1f2937;text-align:center;font-weight:700}.fb-tab{display:inline-block;padding:12px 16px;color:#65676b;text-decoration:none;border-bottom:3px solid transparent;font-weight:600;font-size:14px;margin-right:8px}.fb-tab:hover{color:#1c1e21;background:#e7f3ff}.fb-tab.active{color:#1877f2;border-bottom-color:#1877f2;background:#e7f3ff}</style></head><body><div class="container">${nav}${body}</div><div class="footer-custom">BY JABULANI SHIBAMBO @0725601834 CAPITEC ACCEPTED</div></body></html>`;
 }
 
 app.get("/", async (req, res) => {
@@ -266,8 +268,8 @@ app.get("/", async (req, res) => {
     }
 
     const profiles = await Profile.find();
-    const profileCards = profiles.map(p => `<div class="card"><img class="blurred" src="${p.picture ? '/uploads/' + p.picture : 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=900&q=80'}" alt="profile"/><span class="tag ${p.mode}">${p.mode === "date" ? "❤️ Date My Resmate" : "🤝 Friend My Resmate"}</span><h3>Anonymous Profile</h3><p>Send a view request to see details.</p><div class="top-actions"><a class="btn" href="/profile/${p._id}">Request to View</a></div></div>`).join("");
-    const html = `<div class="hero"><h1>🎉 Resmate Match</h1><p>Create an anonymous profile, send view requests to see profiles, send message requests to chat, and react with likes.</p><p>📍 Campus: FNB 74 Govon Mbheki Metrorez, Gqeberha. For best results, use a campus photo if available.</p><p><a class="btn btn-blue" href="/login">Login with Username + Password</a></p></div><div class="feature-grid"><div class="feature"><h3>❤️ Date My Resmate</h3><p>Descriptions are rewritten in a romantic way.</p></div><div class="feature"><h3>🤝 Friend My Resmate</h3><p>Descriptions are rewritten in a friendly way.</p></div><div class="feature"><h3>👀 View Requests</h3><p>Send requests to view anonymous profiles.</p></div><div class="feature"><h3>💬 Message Requests</h3><p>Send requests to start chatting.</p></div></div><div class="form"><h2>Create Anonymous Profile</h2><form method="POST" action="/create" enctype="multipart/form-data"><label>Choose option</label><select name="mode" required><option value="date">Date My Resmate ❤️</option><option value="friend">Friend My Resmate 🤝</option></select><label>Username (for login)</label><input name="username" placeholder="Example: SilentHeart or ChillBuddy" required/><label>Display name (alias)</label><input name="alias" placeholder="Your anonymous name shown in profiles" required/><label>Password (keep this safe)</label><input type="password" name="password" placeholder="Enter password" required/><label>Email (verification code will be sent here)</label><input type="email" name="contactEmail" placeholder="your.email@example.com" required/><label>Phone (optional backup for verification)</label><input name="contactPhone" placeholder="e.g. +27825601834"/><label>Describe yourself</label><textarea name="about" placeholder="Example: I enjoy music, laughing, late-night talks, studying together..." required></textarea><label>Personality tags (comma separated)</label><input name="tags" placeholder="introvert, gym lover, night owl, romantic, funny"/><label>Profile picture</label><input type="file" name="picture" accept="image/*"/><label style="display:flex;align-items:center;gap:8px;"><span style="color:#dc2626;font-weight:bold;">TICK TO BLUR PICTURE UNTIL VIEW REQUEST APPROVED</span><input type="checkbox" name="blurred" style="transform:scale(1.1);"/></label><button type="submit">Create Profile</button></form></div><h2 style="color:white;">🌈 Community Profiles</h2><div class="grid">${profileCards || '<div class="form"><p>No profiles yet. Create the first one.</p></div>'}</div><footer style="margin-top:20px;color:white;text-align:center;">BY JABULANI SHIBAMBO @0725601834 CAPITEC ACCEPTED</footer>`;
+    const profileCards = profiles.map(p => `<div class="card"><img class="blurred" src="${p.picture ? '/uploads/' + p.picture : 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=900&q=80'}" alt="profile"/><span class="tag ${p.mode}">${p.mode === "date" ? "❤️ Date My Resmate" : p.mode === "friend" ? "🤝 Friend My Resmate" : "🌟 Both"}</span><h3>${escapeHtml(p.alias)}</h3><p>${escapeHtml(p.about)}</p><div class="tags">${p.tags.map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join('')}</div><div class="top-actions"><a class="btn" href="/profile/${p._id}">View Profile</a></div></div>`).join("");
+    const html = `<div class="hero"><h1>🎉 Resmate Match</h1><p>Create an anonymous profile, send view requests to see profiles, send message requests to chat, and react with likes.</p><p>📍 Campus: FNB 74 Govon Mbheki Metrorez, Gqeberha. For best results, use a campus photo if available.</p><p><a class="btn btn-blue" href="/login">Login with Username + Password</a></p></div><div class="feature-grid"><div class="feature"><h3>❤️ Date My Resmate</h3><p>Descriptions are rewritten in a romantic way.</p></div><div class="feature"><h3>🤝 Friend My Resmate</h3><p>Descriptions are rewritten in a friendly way.</p></div><div class="feature"><h3>👀 View Requests</h3><p>Send requests to view anonymous profiles.</p></div><div class="feature"><h3>💬 Message Requests</h3><p>Send requests to start chatting.</p></div></div><div class="form"><h2>Create Anonymous Profile</h2><form method="POST" action="/create" enctype="multipart/form-data"><label>Choose option</label><select name="mode" required><option value="date">Date My Resmate ❤️</option><option value="friend">Friend My Resmate 🤝</option></select><label>Username (for login)</label><input name="username" placeholder="Example: SilentHeart or ChillBuddy" required/><label>Display name (alias)</label><input name="alias" placeholder="Your anonymous name shown in profiles" required/><label>Gender</label><select name="gender" required><option value="male">Male</option><option value="female">Female</option><option value="nonbinary">Nonbinary</option><option value="other">Other</option></select><label>Mode</label><select name="mode" required><option value="date">Date My Resmate ❤️</option><option value="friend">Friend My Resmate 🤝</option><option value="both">Both (wide socialization)</option></select><label>Password (keep this safe)</label><input type="password" name="password" placeholder="Enter password" required/><label>Email (verification code will be sent here)</label><input type="email" name="contactEmail" placeholder="your.email@example.com" required/><label>Phone (optional backup for verification)</label><input name="contactPhone" placeholder="e.g. +27825601834"/><label>Describe yourself</label><textarea name="about" placeholder="Example: I enjoy music, laughing, late-night talks, studying together..." required></textarea><label>Personality tags (comma separated)</label><input name="tags" placeholder="introvert, gym lover, night owl, romantic, funny"/><label>Profile picture</label><input type="file" name="picture" accept="image/*"/><label style="display:flex;align-items:center;gap:8px;"><span style="color:#dc2626;font-weight:bold;">TICK TO BLUR PICTURE UNTIL VIEW REQUEST APPROVED</span><input type="checkbox" name="blurred" style="transform:scale(1.1);"/></label><button type="submit">Create Profile</button></form></div><h2 style="color:white;">🌈 Community Profiles</h2><div class="grid">${profileCards || '<div class="form"><p>No profiles yet. Create the first one.</p></div>'}</div><footer style="margin-top:20px;color:white;text-align:center;">BY JABULANI SHIBAMBO @0725601834 CAPITEC ACCEPTED</footer>`;
     res.send(pageShell("Resmate Match", html));
   } catch (err) {
     console.error("Error fetching profiles:", err);
@@ -393,6 +395,8 @@ app.post("/create", upload.single('picture'), async (req, res) => {
     
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
     let picture = null;
+    const genderValue = (gender && ['male','female','nonbinary','other'].includes(gender)) ? gender : 'other';
+    const modeValue = (mode && ['date','friend','both'].includes(mode)) ? mode : 'date';
     if (req.file) {
       const filename = Date.now() + '.jpg';
       try {
@@ -411,7 +415,8 @@ app.post("/create", upload.single('picture'), async (req, res) => {
     }
     const rewritten = mode === "date" ? romanticRewrite(about) : friendlyRewrite(about);
     const newProfile = new Profile({
-      mode,
+      mode: modeValue,
+      gender: genderValue,
       username: username.trim(),
       alias: alias.trim(),
       password,
@@ -445,36 +450,19 @@ app.get("/profile/:id", async (req, res) => {
     const isOwn = req.session.profileId && req.session.profileId === req.params.id;
     let canView = isOwn;
     if (!canView && req.session.profileId) {
-      // Check for approved view request
-      const viewRequest = await ViewRequest.findOne({
-        fromId: req.session.profileId,
-        toId: req.params.id,
-        status: 'approved'
+      // Check for approved message request for picture
+      const messageRequest = await MessageRequest.findOne({
+        $or: [
+          { fromId: req.session.profileId, toId: req.params.id, status: 'approved' },
+          { fromId: req.params.id, toId: req.session.profileId, status: 'approved' }
+        ]
       });
-      canView = !!viewRequest;
+      canView = !!messageRequest;
     }
-    if (!canView) {
-      // Show request form
-      const existingRequest = await ViewRequest.findOne({
-        fromId: req.session.profileId,
-        toId: req.params.id
-      });
-      let requestForm = '';
-      if (existingRequest) {
-        if (existingRequest.status === 'pending') {
-          requestForm = '<p>Your view request is pending approval.</p>';
-        } else if (existingRequest.status === 'denied') {
-          requestForm = '<p>Your view request was denied. <form method="POST" action="/send-view-request" style="display:inline;"><input type="hidden" name="toId" value="' + req.params.id + '"/><button type="submit" class="btn">Send View Request Again</button></form></p>';
-        }
-      } else {
-        requestForm = '<form method="POST" action="/send-view-request"><input type="hidden" name="toId" value="' + req.params.id + '"/><button type="submit" class="btn btn-blue">Send View Request</button></form>';
-      }
-      const html = `<div class="card" style="max-width:700px;margin:auto;"><img class="blurred profile-cover" src="${profile.picture ? '/uploads/' + profile.picture : 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?auto=format&fit=crop&w=1200&q=80'}" alt="campus"/><div class="pill ${profile.mode}">${profile.mode === "date" ? "Date My Resmate" : "Friend My Resmate"}</div><h1>Anonymous Profile</h1><p>This profile is private. Send a view request to see details.</p>${requestForm}<div class="top-actions"><a class="btn" href="/discover/${req.session.profileId || ''}">Back to Discover</a></div></div>`;
-      return res.send(pageShell("Profile", html, req.session.profileId));
-    }
+    // Always show profile, but blur picture if no approved message request
     const verificationStatus = profile.verified ? '<span style="color:green;font-weight:bold;">Verified</span>' : '<span style="color:red;font-weight:bold;">Not verified - <a href="/verify">Verify now</a></span>';
     const counts = await getCounts(req.params.id);
-    const html = `<div class="card" style="max-width:700px;margin:auto;"><img class="profile-cover" src="${profile.picture ? '/uploads/' + profile.picture : 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?auto=format&fit=crop&w=1200&q=80'}" alt="campus"/><div class="pill ${profile.mode}">${profile.mode === "date" ? "Date My Resmate" : "Friend My Resmate"}</div><h1>${escapeHtml(profile.alias)}</h1><p>Status: ${verificationStatus}</p><p>${escapeHtml(profile.about)}</p><div class="tags">${profile.tags.map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join('')}</div><p><strong>Anonymous profile ID:</strong> ${profile._id}</p><div class="top-actions">${isOwn ? `<a class="btn" href="/discover/${profile._id}">Start Discovering</a><a class="btn btn-blue" href="/matches/${profile._id}">See Matches</a><a class="btn btn-pink" href="/notifications/${profile._id}">Notifications</a><a class="btn btn-gray" href="/edit/${profile._id}">Edit Profile</a><a class="btn btn-gray" href="/logout">Logout</a>` : (await MessageRequest.findOne({ fromId: req.session.profileId, toId: req.params.id, status: 'approved' }) ? `<a class="btn" href="/chat/${req.session.profileId}/${profile._id}">Chat</a>` : '<p>Send message request to chat.</p>')}<form method="POST" action="/send-message-request" style="display:inline;"><input type="hidden" name="toId" value="${req.params.id}"/><button class="btn btn-pink" type="submit">💬 Message Request</button></form></div></div>`;
+    const html = `<div class="card" style="max-width:700px;margin:auto;"><img class="${canView ? '' : 'blurred'} profile-cover" src="${profile.picture ? '/uploads/' + profile.picture : 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?auto=format&fit=crop&w=1200&q=80'}" alt="campus"/><div class="pill ${profile.mode}">${profile.mode === "date" ? "Date My Resmate" : profile.mode === "friend" ? "Friend My Resmate" : "Both"}</div><h1>${escapeHtml(profile.alias)}</h1><p>Status: ${verificationStatus}</p><p>${escapeHtml(profile.about)}</p><div class="tags">${profile.tags.map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join('')}</div><p><strong>Anonymous profile ID:</strong> ${profile._id}</p><div class="top-actions">${isOwn ? `<a class="btn" href="/discover/${profile._id}">Start Discovering</a><a class="btn btn-blue" href="/matches/${profile._id}">See Matches</a><a class="btn btn-pink" href="/notifications/${profile._id}">Notifications</a><a class="btn btn-gray" href="/edit/${profile._id}">Edit Profile</a><a class="btn btn-gray" href="/logout">Logout</a>` : (await MessageRequest.findOne({ fromId: req.session.profileId, toId: req.params.id, status: 'approved' }) ? `<a class="btn" href="/chat/${req.session.profileId}/${profile._id}">Chat</a>` : '<p>Send message request to chat.</p>')}<form method="POST" action="/send-message-request" style="display:inline;"><input type="hidden" name="toId" value="${req.params.id}"/><button class="btn btn-pink" type="submit">💬 Message Request</button></form></div></div>`;
     res.send(pageShell(profile.alias, html, req.session.profileId, counts));
   } catch (err) {
     console.error("Error fetching profile:", err);
@@ -492,7 +480,9 @@ app.get("/edit/:id", async (req, res) => {
     const html = `<div class="form" style="max-width:480px;margin:auto;"><h2>Edit Profile</h2><form method="POST" action="/edit/${profile._id}" enctype="multipart/form-data">` +
       `<label>Username</label><input name="username" value="${escapeHtml(profile.username)}" required/><p style="font-size:12px;color:#666;">Cannot be changed after signup</p>` +
       `<label>Display name (alias)</label><input name="alias" value="${escapeHtml(profile.alias)}" required/>` +
-      `<label>Email</label><input type="email" name="contactEmail" value="${escapeHtml(profile.contactEmail || '')}" required/><p style="font-size:12px;color:#666;">Email used for verification - cannot be changed</p>` +
+      `<label>Gender</label><select name="gender" required><option value="male" ${profile.gender==='male'?'selected':''}>Male</option><option value="female" ${profile.gender==='female'?'selected':''}>Female</option><option value="nonbinary" ${profile.gender==='nonbinary'?'selected':''}>Nonbinary</option><option value="other" ${profile.gender==='other'?'selected':''}>Other</option></select>` +
+      `<label>Mode</label><select name="mode" required><option value="date" ${profile.mode==='date'?'selected':''}>Date My Resmate ❤️</option><option value="friend" ${profile.mode==='friend'?'selected':''}>Friend My Resmate 🤝</option><option value="both" ${profile.mode==='both'?'selected':''}>Both (wide socialization)</option></select>` +
+      `<label>Email</label><input type="email" name="contactEmail" value="${escapeHtml(profile.contactEmail || '')}" required/><p style="font-size:12px;color:#666;">Email used for verification - cannot be changed</p</p>` +
       `<label>Phone</label><input name="contactPhone" value="${escapeHtml(profile.contactPhone || '')}"/><p style="font-size:12px;color:#666;">Backup contact - cannot be changed if already set</p>` +
       `<label>About</label><textarea name="about" required>${escapeHtml(profile.about)}</textarea>` +
       `<label>Tags comma separated</label><input name="tags" value="${escapeHtml((profile.tags || []).join(', '))}"/>` +
@@ -612,6 +602,11 @@ app.get("/chat/:fromId/:toId", async (req, res) => {
     }
     const roomId = `room_${[fromId, toId].sort().join("_")}`;
     const messages = await Message.find({ roomId }).sort({ createdAt: 1 });
+    // Mark messages from the other user as read
+    await Message.updateMany(
+      { roomId, senderId: toId, read: false },
+      { read: true }
+    );
     const msgHTML = messages.map(m => `<div class="msg"><strong>${escapeHtml(m.senderAlias)}:</strong> ${escapeHtml(m.text)}</div>`).join("");
     const html = `<div class="chat-wrap"><h1>💬 Anonymous Private Chat</h1><p><strong>You are chatting as:</strong> ${escapeHtml(profile.alias)}</p><div id="messages">${msgHTML}</div><div class="chat-row"><input id="msgInput" placeholder="Type an anonymous message"/><button onclick="sendMsg()">Send</button></div><div class="top-actions"><a class="btn btn-gray" href="/profile/${fromId}">Back to Profile</a></div></div><script src="/socket.io/socket.io.js"><\/script><script>const socket=io();const roomId=${JSON.stringify(roomId)};const senderId=${JSON.stringify(fromId)};const senderAlias=${JSON.stringify(profile.alias)};const messagesDiv=document.getElementById('messages');const msgInput=document.getElementById('msgInput');socket.emit('joinRoom',{roomId});function appendMessage(sender,text){const div=document.createElement('div');div.className='msg';const strong=document.createElement('strong');strong.textContent=sender+': ';div.appendChild(strong);div.appendChild(document.createTextNode(text));messagesDiv.appendChild(div);messagesDiv.scrollTop=messagesDiv.scrollHeight;}function sendMsg(){const text=msgInput.value.trim();if(!text)return;socket.emit('privateMessage',{roomId,text,senderId,senderAlias});appendMessage(senderAlias,text);msgInput.value='';}msgInput.addEventListener('keydown',function(e){if(e.key==='Enter')sendMsg();});socket.on('privateMessage',function(data){appendMessage(data.senderAlias,data.text);});<\/script>`;
     res.send(pageShell("Chat", html, req.params.fromId));
