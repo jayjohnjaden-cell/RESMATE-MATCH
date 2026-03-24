@@ -255,8 +255,8 @@ async function getCounts(userId) {
 }
 
 function pageShell(title, body, profileId = null, counts = {}) {
-  const nav = profileId ? `<nav style="background:#f0f2f5;border-bottom:1px solid #dadde1;padding:0;margin-bottom:24px;display:flex;"><a class="fb-tab ${title === 'Home' ? 'active' : ''}" href="/">🏠 Home</a><a class="fb-tab ${title === 'Discover' ? 'active' : ''}" href="/discover/${profileId}">🔍 Discover</a><a class="fb-tab ${title === 'Matches' ? 'active' : ''}" href="/matches/${profileId}">❤️ Matches</a><a class="fb-tab ${title.includes('Profile') ? 'active' : ''}" href="/profile/${profileId}">👤 Profile</a><a class="fb-tab ${title === 'News Feed' ? 'active' : ''}" href="/newsfeed">📰 Feed</a><a class="fb-tab ${title === 'Requests' ? 'active' : ''}" href="/requests/${profileId}">📨 Requests ${counts.requests ? `(${counts.requests})` : ''}</a><a class="fb-tab ${title === 'Notifications' ? 'active' : ''}" href="/notifications/${profileId}">🔔 Notifications ${counts.notifications ? `(${counts.notifications})` : ''}</a><a class="fb-tab ${title === 'Chat' ? 'active' : ''}" href="/chat/${profileId}/${profileId}">💬 Messages ${counts.unopenedMessages ? `(${counts.unopenedMessages})` : ''}</a></nav>` : `<nav style="background:#f0f2f5;border-bottom:1px solid #dadde1;padding:0;margin-bottom:24px;display:flex;"><a class="fb-tab" href="/">🏠 Home</a><a class="fb-tab" href="/newsfeed">📰 News Feed</a></nav>`;
-  return `<!DOCTYPE html><html><head><title>${escapeHtml(title)}</title><meta name="viewport" content="width=device-width, initial-scale=1.0"/><style>*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#ff9a9e,#fad0c4,#fbc2eb,#a6c1ee);min-height:100vh;padding:24px;color:#111}a{color:#093b70;text-decoration:none}a:hover{text-decoration:underline}.container{max-width:1150px;margin:auto}.hero{background:rgba(255,255,255,.3);color:#1f2937;border-radius:26px;padding:28px;box-shadow:0 12px 30px rgba(0,0,0,.2);backdrop-filter:blur(8px);margin-bottom:24px}.hero h1{margin:0 0 10px;font-size:2.2rem}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}.card,.form,.feature,.chat-wrap{background:white;border-radius:22px;padding:18px;box-shadow:0 16px 30px rgba(15,23,42,.15)}.feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;margin:22px 0}.card{position:relative;border:1px solid #e5e7eb}.card img,.profile-cover{width:100%;border-radius:16px;margin-bottom:12px;display:block}.tag,.pill{display:inline-block;padding:6px 12px;border-radius:999px;color:white;font-size:12px;font-weight:bold}.tag{position:absolute;top:16px;right:16px}.date{background:#ef4444}.friend{background:#0ea5e9}input,textarea,select{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:12px;margin-top:8px;margin-bottom:16px;font-size:15px;outline:none;transition:all .2s ease}input:focus,textarea:focus,select:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.2)}textarea{min-height:140px;resize:vertical}.btn,button{background:#1f2937;color:white;border:none;border-radius:12px;padding:12px 16px;text-decoration:none;cursor:pointer;display:inline-block;margin-right:8px;margin-top:8px;transition:transform .1s ease,box-shadow .1s ease}.btn:hover,button:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(15,23,42,.2)}.btn-pink{background:#ec4899}.btn-blue{background:#0284c7}.btn-gray{background:#6b7280}.top-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}#messages{height:350px;overflow:auto;background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:14px;margin-bottom:14px}.msg{margin-bottom:10px;padding:10px 12px;background:#fff;border-radius:12px;border:1px solid #e8f0fe}.chat-row{display:flex;gap:10px}.chat-row input{margin:0;flex:1}@media (max-width:700px){body{padding:14px}.hero h1{font-size:1.7rem}.chat-row{flex-direction:column}}.blurred{filter:blur(5px)}.tags{margin:10px 0}.tags .pill{margin-right:5px}.footer-custom{margin-top:24px;padding:10px;color:#1f2937;text-align:center;font-weight:700}.fb-tab{display:inline-block;padding:12px 16px;color:#65676b;text-decoration:none;border-bottom:3px solid transparent;font-weight:600;font-size:14px;margin-right:8px}.fb-tab:hover{color:#1c1e21;background:#e7f3ff}.fb-tab.active{color:#1877f2;border-bottom-color:#1877f2;background:#e7f3ff}</style></head><body><div class="container">${nav}${body}</div><div class="footer-custom">BY JABULANI SHIBAMBO @0725601834 CAPITEC ACCEPTED</div></body></html>`;
+  const nav = profileId ? `<nav style="background:#f0f2f5;border-bottom:1px solid #dadde1;padding:0;margin-bottom:24px;display:flex;"><a class="fb-tab ${title === 'Home' ? 'active' : ''}" href="/">🏠 Home</a><a class="fb-tab ${title === 'Discover' ? 'active' : ''}" href="/discover/${profileId}">🔍 Discover</a><a class="fb-tab ${title === 'Matches' ? 'active' : ''}" href="/matches/${profileId}">❤️ Matches</a><a class="fb-tab ${title.includes('Profile') ? 'active' : ''}" href="/profile/${profileId}">👤 Profile</a><a class="fb-tab ${title === 'News Feed' ? 'active' : ''}" href="/newsfeed">📰 Feed</a><a class="fb-tab ${title === 'Requests' ? 'active' : ''}" href="/requests/${profileId}">📨 Requests ${counts.requests ? `(${counts.requests})` : ''}</a><a class="fb-tab ${title === 'Notifications' ? 'active' : ''}" href="/notifications/${profileId}">🔔 Notifications ${counts.notifications ? `(${counts.notifications})` : ''}</a><a class="fb-tab ${title === 'Messages' ? 'active' : ''}" href="/messages/${profileId}">💬 Messages ${counts.unopenedMessages ? `(${counts.unopenedMessages})` : ''}</a></nav>` : `<nav style="background:#f0f2f5;border-bottom:1px solid #dadde1;padding:0;margin-bottom:24px;display:flex;"><a class="fb-tab" href="/">🏠 Home</a><a class="fb-tab" href="/newsfeed">📰 News Feed</a></nav>`;
+  return `<!DOCTYPE html><html><head><title>${escapeHtml(title)}</title><meta name="viewport" content="width=device-width, initial-scale=1.0"/><style>*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#ff9a9e,#fad0c4,#fbc2eb,#a6c1ee);min-height:100vh;padding:24px;color:#111}a{color:#093b70;text-decoration:none}a:hover{text-decoration:underline}.container{max-width:1150px;margin:auto}.hero{background:rgba(255,255,255,.3);color:#1f2937;border-radius:26px;padding:28px;box-shadow:0 12px 30px rgba(0,0,0,.2);backdrop-filter:blur(8px);margin-bottom:24px}.hero h1{margin:0 0 10px;font-size:2.2rem}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}.card,.form,.feature,.chat-wrap{background:white;border-radius:22px;padding:18px;box-shadow:0 16px 30px rgba(15,23,42,.15)}.feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;margin:22px 0}.card{position:relative;border:1px solid #e5e7eb}.card img,.profile-cover{width:100%;border-radius:16px;margin-bottom:12px;display:block}.tag,.pill{display:inline-block;padding:6px 12px;border-radius:999px;color:white;font-size:12px;font-weight:bold}.tag{position:absolute;top:16px;right:16px}.date{background:#ef4444}.friend{background:#0ea5e9}input,textarea,select{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:12px;margin-top:8px;margin-bottom:16px;font-size:15px;outline:none;transition:all .2s ease}input:focus,textarea:focus,select:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.2)}textarea{min-height:140px;resize:vertical}.btn,button{background:#1f2937;color:white;border:none;border-radius:12px;padding:12px 16px;text-decoration:none;cursor:pointer;display:inline-block;margin-right:8px;margin-top:8px;transition:transform .1s ease,box-shadow .1s ease}.btn:hover,button:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(15,23,42,.2)}.btn-pink{background:#ec4899}.btn-blue{background:#0284c7}.btn-gray{background:#6b7280}.top-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}#messages{height:350px;overflow:auto;background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:14px;margin-bottom:14px}.msg{margin-bottom:10px;padding:10px 12px;background:#fff;border-radius:12px;border:1px solid #e8f0fe}.chat-row{display:flex;gap:10px}.chat-row input{margin:0;flex:1}@media (max-width:700px){body{padding:14px}.hero h1{font-size:1.7rem}.chat-row{flex-direction:column}}.conversation-card:hover{background:#f8f9fa;border-color:#e1e5e9}.conversation-card h4{margin:0;font-weight:600}.conversation-card p{margin:4px 0;color:#65676b;font-size:14px}
 }
 
 app.get("/", async (req, res) => {
@@ -462,7 +462,7 @@ app.get("/profile/:id", async (req, res) => {
     // Always show profile, but blur picture if no approved message request
     const verificationStatus = profile.verified ? '<span style="color:green;font-weight:bold;">Verified</span>' : '<span style="color:red;font-weight:bold;">Not verified - <a href="/verify">Verify now</a></span>';
     const counts = await getCounts(req.params.id);
-    const html = `<div class="card" style="max-width:700px;margin:auto;"><img class="${canView ? '' : 'blurred'} profile-cover" src="${profile.picture ? '/uploads/' + profile.picture : 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?auto=format&fit=crop&w=1200&q=80'}" alt="campus"/><div class="pill ${profile.mode}">${profile.mode === "date" ? "Date My Resmate" : profile.mode === "friend" ? "Friend My Resmate" : "Both"}</div><h1>${escapeHtml(profile.alias)}</h1><p>Status: ${verificationStatus}</p><p>${escapeHtml(profile.about)}</p><div class="tags">${profile.tags.map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join('')}</div><p><strong>Anonymous profile ID:</strong> ${profile._id}</p><div class="top-actions">${isOwn ? `<a class="btn" href="/discover/${profile._id}">Start Discovering</a><a class="btn btn-blue" href="/matches/${profile._id}">See Matches</a><a class="btn btn-pink" href="/notifications/${profile._id}">Notifications</a><a class="btn btn-gray" href="/edit/${profile._id}">Edit Profile</a><a class="btn btn-gray" href="/logout">Logout</a>` : (await MessageRequest.findOne({ fromId: req.session.profileId, toId: req.params.id, status: 'approved' }) ? `<a class="btn" href="/chat/${req.session.profileId}/${profile._id}">Chat</a>` : '<p>Send message request to chat.</p>')}<form method="POST" action="/send-message-request" style="display:inline;"><input type="hidden" name="toId" value="${req.params.id}"/><button class="btn btn-pink" type="submit">💬 Message Request</button></form></div></div>`;
+    const html = `<div class="card" style="max-width:700px;margin:auto;"><img class="${canView ? '' : 'blurred'} profile-cover" src="${profile.picture ? '/uploads/' + profile.picture : 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?auto=format&fit=crop&w=1200&q=80'}" alt="campus"/><div class="pill ${profile.mode}">${profile.mode === "date" ? "Date My Resmate" : profile.mode === "friend" ? "Friend My Resmate" : "Both"}</div><h1>${escapeHtml(profile.alias)}</h1><p><strong>Gender:</strong> ${profile.gender || 'Not specified'}</p><p>Status: ${verificationStatus}</p><p><strong>Bio:</strong> ${escapeHtml(profile.about)}</p><div class="tags">${profile.tags.map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join('')}</div><p><strong>Anonymous profile ID:</strong> ${profile._id}</p><div class="top-actions">${isOwn ? `<a class="btn" href="/discover/${profile._id}">Start Discovering</a><a class="btn btn-blue" href="/matches/${profile._id}">See Matches</a><a class="btn btn-pink" href="/notifications/${profile._id}">Notifications</a><a class="btn btn-gray" href="/edit/${profile._id}">Edit Profile</a><a class="btn btn-gray" href="/logout">Logout</a>` : (await MessageRequest.findOne({ fromId: req.session.profileId, toId: req.params.id, status: 'approved' }) ? `<a class="btn" href="/chat/${req.session.profileId}/${profile._id}">Message</a>` : '<p>To connect with this person, send them a friend request.</p>')}<form method="POST" action="/send-message-request" style="display:inline;"><input type="hidden" name="toId" value="${req.params.id}"/><button class="btn btn-blue" type="submit">👥 Friend Request</button></form></div></div>`;
     res.send(pageShell(profile.alias, html, req.session.profileId, counts));
   } catch (err) {
     console.error("Error fetching profile:", err);
@@ -532,7 +532,7 @@ app.get("/discover/:profileId", async (req, res) => {
     const myMatches = await Match.find({ $or: [{ fromId: currentProfile._id }, { toId: currentProfile._id }] });
     const matchedIds = new Set(myMatches.map(m => m.fromId.toString() === currentProfile._id.toString() ? m.toId.toString() : m.fromId.toString()));
     const profileCards = otherProfiles.map(p => {
-      return `<div class="card"><img class="blurred" src="${p.picture ? '/uploads/' + p.picture : 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=900&q=80'}" alt="profile"/><span class="tag ${p.mode}">${p.mode === "date" ? "❤️ Date My Resmate" : p.mode === "friend" ? "🤝 Friend My Resmate" : "🌟 Both"}</span><h3>${escapeHtml(p.alias)}</h3><p>${escapeHtml(p.about)}</p><div class="tags">${p.tags.map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join('')}</div><div class="top-actions"><form method="POST" action="/send-message-request" style="display:inline;"><input type="hidden" name="toId" value="${p._id}"/><button class="btn btn-pink" type="submit">💬 Message Request</button></form><form method="POST" action="/like/${currentProfile._id}/${p._id}" style="display:inline;"><button class="btn" type="submit">❤️ Like</button></form></div></div>`;
+      return `<div class="card"><img class="blurred" src="${p.picture ? '/uploads/' + p.picture : 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=900&q=80'}" alt="profile"/><span class="tag ${p.mode}">${p.mode === "date" ? "❤️ Date My Resmate" : p.mode === "friend" ? "🤝 Friend My Resmate" : "🌟 Both"}</span><h3>${escapeHtml(p.alias)}</h3><p>${escapeHtml(p.about)}</p><div class="tags">${p.tags.map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join('')}</div><div class="top-actions"><form method="POST" action="/send-message-request" style="display:inline;"><input type="hidden" name="toId" value="${p._id}"/><button class="btn btn-blue" type="submit">👥 Friend Request</button></form><form method="POST" action="/like/${currentProfile._id}/${p._id}" style="display:inline;"><button class="btn" type="submit">❤️ Like</button></form></div></div>`;
     }).join("");
     const html = `<div class="hero"><h1>Discover Profiles</h1><p>You are browsing as <strong>${escapeHtml(currentProfile.alias)}</strong></p></div><div class="grid">${profileCards || '<div class="form"><h3>No profiles yet.</h3></div>'}</div><div class="top-actions"><a class="btn btn-blue" href="/matches/${currentProfile._id}">View My Matches</a><a class="btn btn-gray" href="/profile/${currentProfile._id}">Back to Profile</a></div>`;
     res.send(pageShell("Discover Profiles", html, req.params.profileId));
@@ -635,7 +635,7 @@ app.get("/notifications/:profileId", async (req, res) => {
   }
 });
 
-app.get("/requests/:profileId", async (req, res) => {
+app.get("/messages/:profileId", async (req, res) => {
   try {
     const profileId = req.params.profileId;
     if (!req.session.profileId || req.session.profileId !== profileId) {
@@ -643,32 +643,88 @@ app.get("/requests/:profileId", async (req, res) => {
     }
     const profile = await Profile.findById(profileId);
     if (!profile) return res.status(404).send("Profile not found");
-    const viewRequests = await ViewRequest.find({ toId: profileId, status: 'pending' }).populate('fromId', 'alias');
-    const messageRequests = await MessageRequest.find({ toId: profileId, status: 'pending' }).populate('fromId', 'alias');
-    const viewList = viewRequests.map(r => `<div class="card"><h3>View Request from ${escapeHtml(r.fromId.alias)}</h3><form method="POST" action="/approve-request" style="display:inline;"><input type="hidden" name="type" value="view"/><input type="hidden" name="id" value="${r._id}"/><button class="btn btn-blue" type="submit" name="action" value="approve">Approve</button><button class="btn btn-gray" type="submit" name="action" value="deny">Deny</button></form></div>`).join('');
-    const messageList = messageRequests.map(r => `<div class="card"><h3>Message Request from ${escapeHtml(r.fromId.alias)}</h3><form method="POST" action="/approve-request" style="display:inline;"><input type="hidden" name="type" value="message"/><input type="hidden" name="id" value="${r._id}"/><button class="btn btn-blue" type="submit" name="action" value="approve">Approve</button><button class="btn btn-gray" type="submit" name="action" value="deny">Deny</button></form></div>`).join('');
+
+    // Get pending message requests
+    const pendingRequests = await MessageRequest.find({ toId: profileId, status: 'pending' }).populate('fromId', 'alias picture about gender mode');
+
+    // Get approved conversations (message requests that are approved)
+    const approvedRequests = await MessageRequest.find({
+      $or: [
+        { fromId: profileId, status: 'approved' },
+        { toId: profileId, status: 'approved' }
+      ]
+    }).populate('fromId', 'alias picture about gender mode').populate('toId', 'alias picture about gender mode');
+
+    // Get the latest message for each conversation
+    const conversations = await Promise.all(approvedRequests.map(async (req) => {
+      const otherUserId = req.fromId._id.toString() === profileId ? req.toId._id : req.fromId._id;
+      const otherUser = req.fromId._id.toString() === profileId ? req.toId : req.fromId;
+      const roomId = `room_${[profileId, otherUserId].sort().join("_")}`;
+      const latestMessage = await Message.findOne({ roomId }).sort({ createdAt: -1 });
+      const unreadCount = await Message.countDocuments({ roomId, senderId: otherUserId, read: false });
+
+      return {
+        otherUser,
+        latestMessage,
+        unreadCount,
+        roomId
+      };
+    }));
+
+    const requestCards = pendingRequests.map(r => `
+      <div class="card" style="display:flex;align-items:center;gap:12px;">
+        <img class="blurred" src="${r.fromId.picture ? '/uploads/' + r.fromId.picture : 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=100&q=80'}" alt="profile" style="width:60px;height:60px;border-radius:50%;object-fit:cover;"/>
+        <div style="flex:1;">
+          <h4 style="margin:0;">${escapeHtml(r.fromId.alias)}</h4>
+          <p style="margin:4px 0;color:#666;font-size:14px;">${escapeHtml(r.fromId.about.substring(0, 50))}...</p>
+          <small style="color:#666;">${r.fromId.gender} • ${r.fromId.mode}</small>
+        </div>
+        <div>
+          <form method="POST" action="/approve-message-request" style="display:inline;">
+            <input type="hidden" name="requestId" value="${r._id}"/>
+            <button class="btn btn-blue" type="submit" name="action" value="approve" style="margin:0;">Confirm</button>
+            <button class="btn btn-gray" type="submit" name="action" value="deny" style="margin:0;">Delete</button>
+          </form>
+        </div>
+      </div>
+    `).join('');
+
+    const conversationCards = conversations.map(conv => `
+      <div class="card conversation-card" onclick="window.location.href='/chat/${profileId}/${conv.otherUser._id}'" style="cursor:pointer;display:flex;align-items:center;gap:12px;">
+        <img class="blurred" src="${conv.otherUser.picture ? '/uploads/' + conv.otherUser.picture : 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=100&q=80'}" alt="profile" style="width:60px;height:60px;border-radius:50%;object-fit:cover;"/>
+        <div style="flex:1;">
+          <h4 style="margin:0;">${escapeHtml(conv.otherUser.alias)}${conv.unreadCount > 0 ? ` <span style="background:#e53e3e;color:white;border-radius:10px;padding:2px 6px;font-size:12px;">${conv.unreadCount}</span>` : ''}</h4>
+          <p style="margin:4px 0;color:#666;font-size:14px;">${conv.latestMessage ? escapeHtml(conv.latestMessage.text.substring(0, 30)) + (conv.latestMessage.text.length > 30 ? '...' : '') : 'No messages yet'}</p>
+          <small style="color:#666;">${conv.otherUser.gender} • ${conv.otherUser.mode}</small>
+        </div>
+        <small style="color:#999;">${conv.latestMessage ? new Date(conv.latestMessage.createdAt).toLocaleDateString() : ''}</small>
+      </div>
+    `).join('');
+
     const counts = await getCounts(profileId);
-    const html = `<div class="hero"><h1>Requests</h1></div><h2>View Requests</h2><div class="grid">${viewList || '<div class="form"><p>No view requests.</p></div>'}</div><h2>Message Requests</h2><div class="grid">${messageList || '<div class="form"><p>No message requests.</p></div>'}</div><div class="top-actions"><a class="btn btn-gray" href="/profile/${profileId}">Back to Profile</a></div>`;
-    res.send(pageShell("Requests", html, req.params.profileId, counts));
+    const html = `
+      <div class="hero"><h1>Messages</h1></div>
+      ${requestCards ? `<h2>Friend Requests</h2><div class="grid">${requestCards}</div>` : ''}
+      ${conversationCards ? `<h2>Messages</h2><div class="grid">${conversationCards}</div>` : ''}
+      ${!requestCards && !conversationCards ? '<div class="form"><h3>No messages or requests yet</h3><p>Start discovering profiles and sending friend requests!</p></div>' : ''}
+      <div class="top-actions"><a class="btn" href="/discover/${profileId}">Find Friends</a><a class="btn btn-gray" href="/profile/${profileId}">Back to Profile</a></div>
+    `;
+    res.send(pageShell("Messages", html, req.params.profileId, counts));
   } catch (err) {
-    console.error("Error in requests:", err);
-    res.status(500).send("Error loading requests");
+    console.error("Error in messages:", err);
+    res.status(500).send("Error loading messages");
   }
 });
 
-app.post("/approve-request", async (req, res) => {
+app.post("/approve-message-request", async (req, res) => {
   try {
     if (!req.session.profileId) return res.status(401).send("Please login");
-    const { type, id, action } = req.body;
+    const { requestId, action } = req.body;
     const status = action === 'approve' ? 'approved' : 'denied';
-    if (type === 'view') {
-      await ViewRequest.findByIdAndUpdate(id, { status });
-    } else if (type === 'message') {
-      await MessageRequest.findByIdAndUpdate(id, { status });
-    }
-    res.redirect(`/requests/${req.session.profileId}`);
+    await MessageRequest.findByIdAndUpdate(requestId, { status });
+    res.redirect(`/messages/${req.session.profileId}`);
   } catch (err) {
-    console.error("Error approving request:", err);
+    console.error("Error approving message request:", err);
     res.status(500).send("Error processing request");
   }
 });
