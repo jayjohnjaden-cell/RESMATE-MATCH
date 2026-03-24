@@ -7,7 +7,7 @@ const sharp = require("sharp");
 const path = require("path");
 const fs = require("fs");
 const session = require("express-session");
-const MongoStore = require("connect-mongo");
+const { MongoStore } = require("connect-mongo");
 
 const app = express();
 const server = http.createServer(app);
