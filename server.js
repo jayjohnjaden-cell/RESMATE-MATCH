@@ -324,7 +324,10 @@ textarea{min-height:100px;resize:vertical}
 .btn-pink{background:#e41e3f}.btn-pink:hover{background:#c91a2e}
 .btn-gray{background:#b0b8c1}.btn-gray:hover{background:#96a0aa}
 .top-actions{display:flex;flex-wrap:wrap;gap:8px}
-.msg{background:#f0f2f5;padding:12px 16px;border-radius:8px;margin:8px 0;border-left:3px solid #003366}
+.msg{max-width:75%;padding:10px 14px;margin:8px 0;border-radius:20px;line-height:1.4;word-wrap:break-word;display:inline-block}
+.msg.sent{background:#003366;color:white;margin-left:auto;text-align:right;border-top-right-radius:2px;border-top-left-radius:20px;border-bottom-left-radius:20px;border-bottom-right-radius:2px}
+.msg.received{background:#e4e6eb;color:#050505;margin-right:auto;text-align:left;border-top-right-radius:20px;border-top-left-radius:2px;border-bottom-left-radius:2px;border-bottom-right-radius:20px}
+#messages{height:420px;overflow-y:auto;background:#f0f2f5;border:1px solid #cce1e6;border-radius:12px;padding:12px}
 .conversation-card{cursor:pointer;transition:all .2s ease;display:flex;align-items:center;gap:12px;padding:12px}
 .conversation-card:hover{background:#f0f2f5;border-radius:8px}
 .conversation-card h4{margin:0;font-weight:600;color:#050505}
@@ -721,8 +724,11 @@ app.get("/chat/:roomId/:fromId", async (req, res) => {
       { roomId, senderId: toId, read: false },
       { read: true }
     );
-    const msgHTML = messages.map(m => `<div class="msg"><strong>${escapeHtml(m.senderAlias)}:</strong> ${escapeHtml(m.text)}</div>`).join("");
-    const html = `<div class="chat-wrap"><h1>💬 Anonymous Private Chat</h1><p><strong>You are chatting as:</strong> ${escapeHtml(profile.alias)}</p><div id="messages">${msgHTML}</div><div class="chat-row"><input id="msgInput" placeholder="Type an anonymous message"/><button onclick="sendMsg()">Send</button></div><div class="top-actions"><a class="btn btn-gray" href="/messages/${fromId}">Back to Messages</a></div></div><script src="/socket.io/socket.io.js"><\/script><script>const socket=io();const roomId=${JSON.stringify(roomId)};const senderId=${JSON.stringify(fromId)};const senderAlias=${JSON.stringify(profile.alias)};const messagesDiv=document.getElementById('messages');const msgInput=document.getElementById('msgInput');socket.emit('joinRoom',{roomId});function appendMessage(sender,text){const div=document.createElement('div');div.className='msg';const strong=document.createElement('strong');strong.textContent=sender+': ';div.appendChild(strong);div.appendChild(document.createTextNode(text));messagesDiv.appendChild(div);messagesDiv.scrollTop=messagesDiv.scrollHeight;}function sendMsg(){const text=msgInput.value.trim();if(!text)return;socket.emit('privateMessage',{roomId,text,senderId,senderAlias});appendMessage(senderAlias,text);msgInput.value='';}msgInput.addEventListener('keydown',function(e){if(e.key==='Enter')sendMsg();});socket.on('privateMessage',function(data){appendMessage(data.senderAlias,data.text);});<\/script>`;
+    const msgHTML = messages.map(m => {
+      const sideClass = m.senderId.toString() === fromId.toString() ? 'sent' : 'received';
+      return `<div class="msg ${sideClass}"><strong>${escapeHtml(m.senderAlias)}:</strong> ${escapeHtml(m.text)}</div>`;
+    }).join("");
+    const html = `<div class="chat-wrap"><h1>💬 Anonymous Private Chat</h1><p><strong>You are chatting as:</strong> ${escapeHtml(profile.alias)}</p><div id="messages">${msgHTML}</div><div class="chat-row"><input id="msgInput" placeholder="Type an anonymous message"/><button onclick="sendMsg()">Send</button></div><div class="top-actions"><a class="btn btn-gray" href="/messages/${fromId}">Back to Messages</a></div></div><script src="/socket.io/socket.io.js"><\/script><script>const socket=io();const roomId=${JSON.stringify(roomId)};const senderId=${JSON.stringify(fromId)};const senderAlias=${JSON.stringify(profile.alias)};const messagesDiv=document.getElementById('messages');const msgInput=document.getElementById('msgInput');socket.emit('joinRoom',{roomId});function appendMessage(sender,text,cls){const div=document.createElement('div');div.className='msg '+(cls||'received');const strong=document.createElement('strong');strong.textContent=sender+': ';div.appendChild(strong);div.appendChild(document.createTextNode(text));messagesDiv.appendChild(div);messagesDiv.scrollTop=messagesDiv.scrollHeight;}function sendMsg(){const text=msgInput.value.trim();if(!text)return;appendMessage(senderAlias,text,'sent');socket.emit('privateMessage',{roomId,text,senderId,senderAlias});msgInput.value='';}msgInput.addEventListener('keydown',function(e){if(e.key==='Enter')sendMsg();});socket.on('privateMessage',function(data){if(data.senderId!==senderId){appendMessage(data.senderAlias,data.text,'received');}});<\/script>`;
     res.send(pageShell("Chat", html, req.params.fromId));
   } catch (err) {
     console.error("Error in chat:", err);
@@ -923,7 +929,8 @@ io.on("connection", (socket) => {
     if (!roomId || !text || !senderId) return;
     const message = new Message({ roomId, senderId, text, senderAlias });
     await message.save();
-    io.to(roomId).emit("privateMessage", { text, senderAlias });
+    // Send to everyone except the sender to prevent duplicate rendering
+    socket.to(roomId).emit("privateMessage", { text, senderAlias, senderId });
     // Send notification to other participant
     const parts = roomId.split('_');
     const id1 = parts[1], id2 = parts[2];
