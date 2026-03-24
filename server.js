@@ -121,7 +121,13 @@ app.get("/", async (req, res) => {
     res.send(pageShell("Resmate Match", html));
   } catch (err) {
     console.error("Error fetching profiles:", err);
-    res.status(500).send("Error loading profiles");
+    const errMsg = `<div style="padding:24px; font-family:Arial, Helvetica, sans-serif;
+      background:#fff;color:#b91c1c;border:2px solid #fca5a5;border-radius:12px;">
+      <h2>Error loading profiles</h2>
+      <p>${escapeHtml(err.message || err.toString())}</p>
+      <p>Check MONGODB_URI and Atlas IP whitelist (or use local MongoDB).</p>
+      </div>`;
+    res.status(500).send(pageShell("Error", errMsg));
   }
 });
 
