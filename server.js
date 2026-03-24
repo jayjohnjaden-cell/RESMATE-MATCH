@@ -7,6 +7,7 @@ const sharp = require("sharp");
 const path = require("path");
 const fs = require("fs");
 const session = require("express-session");
+const MongoStore = require("connect-mongo");
 
 const app = express();
 const server = http.createServer(app);
@@ -17,6 +18,10 @@ app.use(session({
   secret: 'resmatematch_secret_2026',
   resave: false,
   saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/resmatematch',
+    ttl: 3 * 60 * 60 // 3 hours
+  }),
   cookie: { maxAge: 1000 * 60 * 60 * 3 } // 3 hours
 }));
 
