@@ -278,14 +278,14 @@ function pageShell(title, body, profileId = null, counts = {}) {
   return `<!DOCTYPE html><html><head><title>${escapeHtml(title)}</title><meta name="viewport" content="width=device-width, initial-scale=1.0"/><style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;background:#f0f2f5;color:#050505}
-a{color:#0a66c2;text-decoration:none}a:hover{text-decoration:underline}
+a{color:#003366;text-decoration:none}a:hover{text-decoration:underline}
 #fb-header{background:white;border-bottom:1px solid #cce1e6;padding:8px 0;position:sticky;top:0;z-index:100;box-shadow:0 1px 2px rgba(0,0,0,.1)}
 .header-content{max-width:1400px;margin:0 auto;padding:0 16px;display:flex;align-items:center;justify-content:space-between}
-.fb-logo{font-size:28px;font-weight:bold;color:#0a66c2;margin-right:20px}
+.fb-logo{font-size:28px;font-weight:bold;color:#003366;margin-right:20px}
 .header-nav{display:flex;gap:0;flex:1;border-bottom:1px solid #cce1e6}
 .nav-item{display:flex;align-items:center;gap:6px;padding:12px 16px;color:#65676b;text-decoration:none;border-bottom:3px solid transparent;transition:all .2s ease;cursor:pointer;white-space:nowrap;position:relative;font-weight:500;font-size:14px}
-.nav-item:hover{color:#0a66c2;background:#f0f2f5}
-.nav-item.active{color:#0a66c2;border-bottom-color:#0a66c2}
+.nav-item:hover{color:#003366;background:#f0f2f5}
+.nav-item.active{color:#003366;border-bottom-color:#003366}
 .nav-icon{font-size:18px}
 .nav-label{font-size:13px}
 .badge{background:#e41e3f;color:white;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;margin-left:4px}
@@ -293,13 +293,13 @@ a{color:#0a66c2;text-decoration:none}a:hover{text-decoration:underline}
 @media (min-width:1280px){#main-wrapper{grid-template-columns:280px 1fr 320px}}
 .sidebar{background:white;border-radius:8px;padding:16px;height:fit-content;border:1px solid #cce1e6}
 .sidebar h3{font-size:13px;font-weight:600;color:#65676b;margin-bottom:12px}
-.sidebar a{display:block;padding:8px 0;color:#0a66c2;font-size:14px}
-.sidebar a:hover{color:#004182}
+.sidebar a{display:block;padding:8px 0;color:#003366;font-size:14px}
+.sidebar a:hover{color:#001a29}
 #content{background:white;border-radius:8px;padding:28px;border:1px solid #cce1e6;min-height:calc(100vh - 200px)}
 #content h1{font-size:28px;color:#050505;margin-bottom:20px;font-weight:600}
 #content h2{font-size:18px;color:#050505;margin-top:20px;margin-bottom:12px;font-weight:600}
 #content h3{font-size:16px;color:#050505;margin-top:16px;margin-bottom:10px;font-weight:600}
-.hero{background:linear-gradient(135deg,#0a66c2 0%,#0d78c1 100%);color:white;border-radius:8px;padding:32px;margin-bottom:20px;text-align:center}
+.hero{background:linear-gradient(135deg,#003366 0%,#001a29 100%);color:white;border-radius:8px;padding:32px;margin-bottom:20px;text-align:center}
 .hero h1{color:white;margin-bottom:12px}
 .hero p{font-size:15px;line-height:1.5}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin:16px 0}
@@ -309,22 +309,22 @@ a{color:#0a66c2;text-decoration:none}a:hover{text-decoration:underline}
 .card h3{font-size:15px;font-weight:600;color:#050505;margin:12px 0 8px}
 .card p{font-size:13px;color:#65676b;line-height:1.4;margin:8px 0}
 .card .tags{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
-.pill{display:inline-block;padding:6px 12px;border-radius:999px;background:#e7f3ff;color:#0a66c2;font-size:12px;font-weight:600}
+.pill{display:inline-block;padding:6px 12px;border-radius:999px;background:#e7f3ff;color:#003366;font-size:12px;font-weight:600}
 .card .top-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .form{background:white;border:1px solid #cce1e6;border-radius:8px;padding:20px;margin:16px 0}
 .form h2{margin-top:0}
 .form label{display:block;font-weight:600;color:#050505;font-size:14px;margin:16px 0 6px}
 .form label:first-of-type{margin-top:0}
 input,textarea,select{width:100%;padding:10px 12px;border:1px solid #b0b8c1;border-radius:6px;font-size:14px;font-family:inherit;margin:6px 0 12px;transition:all .2s ease}
-input:focus,textarea:focus,select:focus{border-color:#0a66c2;outline:none;box-shadow:0 0 0 3px rgba(10,102,194,.15)}
+input:focus,textarea:focus,select:focus{border-color:#003366;outline:none;box-shadow:0 0 0 3px rgba(0,51,102,.15)}
 textarea{min-height:100px;resize:vertical}
-.btn,button{background:#0a66c2;color:white;border:none;border-radius:6px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;transition:all .2s ease;margin:6px 6px 6px 0}
-.btn:hover,button:hover{background:#004182}
-.btn-blue{background:#0a66c2}.btn-blue:hover{background:#004182}
+.btn,button{background:#003366;color:white;border:none;border-radius:6px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;transition:all .2s ease;margin:6px 6px 6px 0}
+.btn:hover,button:hover{background:#001a29}
+.btn-blue{background:#003366}.btn-blue:hover{background:#001a29}
 .btn-pink{background:#e41e3f}.btn-pink:hover{background:#c91a2e}
 .btn-gray{background:#b0b8c1}.btn-gray:hover{background:#96a0aa}
 .top-actions{display:flex;flex-wrap:wrap;gap:8px}
-.msg{background:#f0f2f5;padding:12px 16px;border-radius:8px;margin:8px 0;border-left:3px solid #0a66c2}
+.msg{background:#f0f2f5;padding:12px 16px;border-radius:8px;margin:8px 0;border-left:3px solid #003366}
 .conversation-card{cursor:pointer;transition:all .2s ease;display:flex;align-items:center;gap:12px;padding:12px}
 .conversation-card:hover{background:#f0f2f5;border-radius:8px}
 .conversation-card h4{margin:0;font-weight:600;color:#050505}
@@ -572,7 +572,7 @@ app.get("/profile/:id", async (req, res) => {
     // Always show profile, but blur picture if no approved message request
     const verificationStatus = profile.verified ? '<span style="color:green;font-weight:bold;">Verified</span>' : '<span style="color:red;font-weight:bold;">Not verified - <a href="/verify">Verify now</a></span>';
     const counts = await getCounts(req.params.id);
-    const html = `<div class="card" style="max-width:700px;margin:auto;"><img class="${canView ? '' : 'blurred'} profile-cover" src="${profile.picture ? '/uploads/' + profile.picture : 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?auto=format&fit=crop&w=1200&q=80'}" alt="campus"/><div class="pill ${profile.mode}">${profile.mode === "date" ? "Date My Resmate" : profile.mode === "friend" ? "Friend My Resmate" : "Both"}</div><h1>${escapeHtml(profile.alias)}</h1><p><strong>Gender:</strong> ${profile.gender || 'Not specified'}</p><p>Status: ${verificationStatus}</p><p><strong>Bio:</strong> ${escapeHtml(profile.about)}</p><div class="tags">${profile.tags.map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join('')}</div><p><strong>Anonymous profile ID:</strong> ${profile._id}</p><div class="top-actions">${isOwn ? `<a class="btn" href="/discover/${profile._id}">Start Discovering</a><a class="btn btn-blue" href="/matches/${profile._id}">See Matches</a><a class="btn btn-pink" href="/notifications/${profile._id}">Notifications</a><a class="btn btn-gray" href="/edit/${profile._id}">Edit Profile</a><a class="btn btn-gray" href="/logout">Logout</a>` : (await MessageRequest.findOne({ fromId: req.session.profileId, toId: req.params.id, status: 'approved' }) ? `<a class="btn" href="/chat/${req.session.profileId}/${profile._id}">Message</a>` : '<p>To connect with this person, send them a friend request.</p>')}<form method="POST" action="/send-message-request" style="display:inline;"><input type="hidden" name="toId" value="${req.params.id}"/><button class="btn btn-blue" type="submit">👥 Friend Request</button></form></div></div>`;
+    const html = `<div class="card" style="max-width:700px;margin:auto;"><img class="${canView ? '' : 'blurred'} profile-cover" src="${profile.picture ? '/uploads/' + profile.picture : 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?auto=format&fit=crop&w=1200&q=80'}" alt="campus"/><div class="pill ${profile.mode}">${profile.mode === "date" ? "Date My Resmate" : profile.mode === "friend" ? "Friend My Resmate" : "Both"}</div><h1>${escapeHtml(profile.alias)}</h1><p><strong>Gender:</strong> ${profile.gender || 'Not specified'}</p><p>Status: ${verificationStatus}</p><p><strong>Bio:</strong> ${escapeHtml(profile.about)}</p><div class="tags">${profile.tags.map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join('')}</div><p><strong>Anonymous profile ID:</strong> ${profile._id}</p><div class="top-actions">${isOwn ? `<a class="btn" href="/discover/${profile._id}">Start Discovering</a><a class="btn btn-blue" href="/matches/${profile._id}">See Matches</a><a class="btn btn-pink" href="/notifications/${profile._id}">Notifications</a><a class="btn btn-gray" href="/edit/${profile._id}">Edit Profile</a><a class="btn btn-gray" href="/logout">Logout</a>` : (await MessageRequest.findOne({ fromId: req.session.profileId, toId: req.params.id, status: 'approved' }) ? `<a class="btn" href="/chat/${req.session.profileId}/${profile._id}">Message</a>` : '<p>To connect with this person, send them a friend request.</p>')}<form method="POST" action="/send-message-request" style="display:inline;"><input type="hidden" name="toId" value="${req.params.id}"/><button class="btn btn-blue" type="submit">� Send Message</button></form></div></div>`;
     res.send(pageShell(profile.alias, html, req.session.profileId, counts));
   } catch (err) {
     console.error("Error fetching profile:", err);
@@ -642,7 +642,7 @@ app.get("/discover/:profileId", async (req, res) => {
     const myMatches = await Match.find({ $or: [{ fromId: currentProfile._id }, { toId: currentProfile._id }] });
     const matchedIds = new Set(myMatches.map(m => m.fromId.toString() === currentProfile._id.toString() ? m.toId.toString() : m.fromId.toString()));
     const profileCards = otherProfiles.map(p => {
-      return `<div class="card"><img class="blurred" src="${p.picture ? '/uploads/' + p.picture : 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=900&q=80'}" alt="profile"/><span class="tag ${p.mode}">${p.mode === "date" ? "❤️ Date My Resmate" : p.mode === "friend" ? "🤝 Friend My Resmate" : "🌟 Both"}</span><h3>${escapeHtml(p.alias)}</h3><p>${escapeHtml(p.about)}</p><div class="tags">${p.tags.map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join('')}</div><div class="top-actions"><form method="POST" action="/send-message-request" style="display:inline;"><input type="hidden" name="toId" value="${p._id}"/><button class="btn btn-blue" type="submit">👥 Friend Request</button></form><form method="POST" action="/like/${currentProfile._id}/${p._id}" style="display:inline;"><button class="btn" type="submit">❤️ Like</button></form></div></div>`;
+      return `<div class="card"><img class="blurred" src="${p.picture ? '/uploads/' + p.picture : 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=900&q=80'}" alt="profile"/><span class="tag ${p.mode}">${p.mode === "date" ? "❤️ Date My Resmate" : p.mode === "friend" ? "🤝 Friend My Resmate" : "🌟 Both"}</span><h3>${escapeHtml(p.alias)}</h3><p>${escapeHtml(p.about)}</p><div class="tags">${p.tags.map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join('')}</div><div class="top-actions"><form method="POST" action="/send-message-request" style="display:inline;"><input type="hidden" name="toId" value="${p._id}"/><button class="btn btn-blue" type="submit">� Send Message</button></form><form method="POST" action="/like/${currentProfile._id}/${p._id}" style="display:inline;"><button class="btn" type="submit">❤️ Like</button></form></div></div>`;
     }).join("");
     const html = `<div class="hero"><h1>Discover Profiles</h1><p>You are browsing as <strong>${escapeHtml(currentProfile.alias)}</strong></p></div><div class="grid">${profileCards || '<div class="form"><h3>No profiles yet.</h3></div>'}</div><div class="top-actions"><a class="btn btn-blue" href="/matches/${currentProfile._id}">View My Matches</a><a class="btn btn-gray" href="/profile/${currentProfile._id}">Back to Profile</a></div>`;
     res.send(pageShell("Discover Profiles", html, req.params.profileId));
