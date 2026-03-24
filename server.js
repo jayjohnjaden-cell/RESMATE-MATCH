@@ -178,6 +178,8 @@ const messageSchema = new mongoose.Schema({
 
 const notificationSchema = new mongoose.Schema({
   userId: mongoose.Schema.Types.ObjectId,
+  fromId: mongoose.Schema.Types.ObjectId,
+  type: { type: String, default: 'info' }, // info | like | messageRequest | requestApproved | requestDenied
   message: String,
   createdAt: { type: Date, default: Date.now },
 });
@@ -256,7 +258,7 @@ async function getCounts(userId) {
 
 function pageShell(title, body, profileId = null, counts = {}) {
   const nav = profileId ? `<nav style="background:#f0f2f5;border-bottom:1px solid #dadde1;padding:0;margin-bottom:24px;display:flex;"><a class="fb-tab ${title === 'Home' ? 'active' : ''}" href="/">🏠 Home</a><a class="fb-tab ${title === 'Discover' ? 'active' : ''}" href="/discover/${profileId}">🔍 Discover</a><a class="fb-tab ${title === 'Matches' ? 'active' : ''}" href="/matches/${profileId}">❤️ Matches</a><a class="fb-tab ${title.includes('Profile') ? 'active' : ''}" href="/profile/${profileId}">👤 Profile</a><a class="fb-tab ${title === 'News Feed' ? 'active' : ''}" href="/newsfeed">📰 Feed</a><a class="fb-tab ${title === 'Requests' ? 'active' : ''}" href="/requests/${profileId}">📨 Requests ${counts.requests ? `(${counts.requests})` : ''}</a><a class="fb-tab ${title === 'Notifications' ? 'active' : ''}" href="/notifications/${profileId}">🔔 Notifications ${counts.notifications ? `(${counts.notifications})` : ''}</a><a class="fb-tab ${title === 'Messages' ? 'active' : ''}" href="/messages/${profileId}">💬 Messages ${counts.unopenedMessages ? `(${counts.unopenedMessages})` : ''}</a></nav>` : `<nav style="background:#f0f2f5;border-bottom:1px solid #dadde1;padding:0;margin-bottom:24px;display:flex;"><a class="fb-tab" href="/">🏠 Home</a><a class="fb-tab" href="/newsfeed">📰 News Feed</a></nav>`;
-  return `<!DOCTYPE html><html><head><title>${escapeHtml(title)}</title><meta name="viewport" content="width=device-width, initial-scale=1.0"/><style>*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#ff9a9e,#fad0c4,#fbc2eb,#a6c1ee);min-height:100vh;padding:24px;color:#111}a{color:#093b70;text-decoration:none}a:hover{text-decoration:underline}.container{max-width:1150px;margin:auto}.hero{background:rgba(255,255,255,.3);color:#1f2937;border-radius:26px;padding:28px;box-shadow:0 12px 30px rgba(0,0,0,.2);backdrop-filter:blur(8px);margin-bottom:24px}.hero h1{margin:0 0 10px;font-size:2.2rem}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}.card,.form,.feature,.chat-wrap{background:white;border-radius:22px;padding:18px;box-shadow:0 16px 30px rgba(15,23,42,.15)}.feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;margin:22px 0}.card{position:relative;border:1px solid #e5e7eb}.card img,.profile-cover{width:100%;border-radius:16px;margin-bottom:12px;display:block}.tag,.pill{display:inline-block;padding:6px 12px;border-radius:999px;color:white;font-size:12px;font-weight:bold}.tag{position:absolute;top:16px;right:16px}.date{background:#ef4444}.friend{background:#0ea5e9}input,textarea,select{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:12px;margin-top:8px;margin-bottom:16px;font-size:15px;outline:none;transition:all .2s ease}input:focus,textarea:focus,select:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.2)}textarea{min-height:140px;resize:vertical}.btn,button{background:#1f2937;color:white;border:none;border-radius:12px;padding:12px 16px;text-decoration:none;cursor:pointer;display:inline-block;margin-right:8px;margin-top:8px;transition:transform .1s ease,box-shadow .1s ease}.btn:hover,button:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(15,23,42,.2)}.btn-pink{background:#ec4899}.btn-blue{background:#0284c7}.btn-gray{background:#6b7280}.top-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}#messages{height:350px;overflow:auto;background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:14px;margin-bottom:14px}.msg{margin-bottom:10px;padding:10px 12px;background:#fff;border-radius:12px;border:1px solid #e8f0fe}.chat-row{display:flex;gap:10px}.chat-row input{margin:0;flex:1}@media (max-width:700px){body{padding:14px}.hero h1{font-size:1.7rem}.chat-row{flex-direction:column}}.conversation-card:hover{background:#f8f9fa;border-color:#e1e5e9}.conversation-card h4{margin:0;font-weight:600}.conversation-card p{margin:4px 0;color:#65676b;font-size:14px}
+  return `<!DOCTYPE html><html><head><title>${escapeHtml(title)}</title><meta name="viewport" content="width=device-width, initial-scale=1.0"/><style>*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#ff9a9e,#fad0c4,#fbc2eb,#a6c1ee);min-height:100vh;padding:24px;color:#111}a{color:#093b70;text-decoration:none}a:hover{text-decoration:underline}.container{max-width:1150px;margin:auto}.hero{background:rgba(255,255,255,.3);color:#1f2937;border-radius:26px;padding:28px;box-shadow:0 12px 30px rgba(0,0,0,.2);backdrop-filter:blur(8px);margin-bottom:24px}.hero h1{margin:0 0 10px;font-size:2.2rem}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}.card,.form,.feature,.chat-wrap{background:white;border-radius:22px;padding:18px;box-shadow:0 16px 30px rgba(15,23,42,.15)}.feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;margin:22px 0}.card{position:relative;border:1px solid #e5e7eb}.card img,.profile-cover{width:100%;border-radius:16px;margin-bottom:12px;display:block}.tag,.pill{display:inline-block;padding:6px 12px;border-radius:999px;color:white;font-size:12px;font-weight:bold}.tag{position:absolute;top:16px;right:16px}.date{background:#ef4444}.friend{background:#0ea5e9}input,textarea,select{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:12px;margin-top:8px;margin-bottom:16px;font-size:15px;outline:none;transition:all .2s ease}input:focus,textarea:focus,select:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.2)}textarea{min-height:140px;resize:vertical}.btn,button{background:#1f2937;color:white;border:none;border-radius:12px;padding:12px 16px;text-decoration:none;cursor:pointer;display:inline-block;margin-right:8px;margin-top:8px;transition:transform .1s ease,box-shadow .1s ease}.btn:hover,button:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(15,23,42,.2)}.btn-pink{background:#ec4899}.btn-blue{background:#0284c7}.btn-gray{background:#6b7280}.top-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}#messages{height:350px;overflow:auto;background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:14px;margin-bottom:14px}.msg{margin-bottom:10px;padding:10px 12px;background:#fff;border-radius:12px;border:1px solid #e8f0fe}.chat-row{display:flex;gap:10px}.chat-row input{margin:0;flex:1}@media (max-width:700px){body{padding:14px}.hero h1{font-size:1.7rem}.chat-row{flex-direction:column}}.conversation-card:hover{background:#f8f9fa;border-color:#e1e5e9}.conversation-card h4{margin:0;font-weight:600}.conversation-card p{margin:4px 0;color:#65676b;font-size:14px}.blurred{filter:blur(5px)}.tags{margin:10px 0}.tags .pill{margin-right:5px}.footer-custom{margin-top:24px;padding:10px;color:#1f2937;text-align:center;font-weight:700}.fb-tab{display:inline-block;padding:12px 16px;color:#65676b;text-decoration:none;border-bottom:3px solid transparent;font-weight:600;font-size:14px;margin-right:8px}.fb-tab:hover{color:#1c1e21;background:#e7f3ff}.fb-tab.active{color:#1877f2;border-bottom-color:#1877f2;background:#e7f3ff}</style></head><body><div class="container">${nav}${body}</div><div class="footer-custom">BY JABULANI SHIBAMBO @0725601834 CAPITEC ACCEPTED</div></body></html>`;
 }
 
 app.get("/", async (req, res) => {
@@ -327,7 +329,7 @@ app.post("/send-message-request", async (req, res) => {
     } else {
       await new MessageRequest({ fromId: req.session.profileId, toId }).save();
     }
-    await new Notification({ userId: toId, message: "New message request 💬" }).save();
+    await new Notification({ userId: toId, fromId: req.session.profileId, type: 'messageRequest', message: 'New message request 💬' }).save();
     res.redirect(`/discover/${req.session.profileId}`);
   } catch (err) {
     console.error("Error sending message request:", err);
@@ -550,7 +552,7 @@ app.post("/like/:fromId/:toId", async (req, res) => {
     const existing = await Like.findOne({ fromId, toId });
     if (!existing) {
       await new Like({ fromId, toId }).save();
-      await new Notification({ userId: toId, message: "Someone liked you ❤️" }).save();
+      await new Notification({ userId: toId, fromId, type: 'like', message: 'Someone liked you ❤️' }).save();
     }
     res.redirect(`/discover/${fromId}`);
   } catch (err) {
@@ -625,7 +627,24 @@ app.get("/notifications/:profileId", async (req, res) => {
     const profile = await Profile.findById(profileId);
     if (!profile) return res.status(404).send("Profile not found");
     const notifications = await Notification.find({ userId: profileId }).sort({ createdAt: -1 });
-    const list = notifications.length > 0 ? notifications.map(n => `<div class="msg">${escapeHtml(n.message)} <small>${n.createdAt.toLocaleString()}</small></div>`).join('') : '<p>No notifications yet.</p>';
+    const list = notifications.length > 0 ? notifications.map(n => {
+      let link = '';
+      if (n.type === 'messageRequest') {
+        link = `/requests/${profileId}`;
+      } else if (n.type === 'like' && n.fromId) {
+        link = `/profile/${n.fromId}`;
+      } else if (n.type === 'requestApproved' || n.type === 'requestDenied') {
+        link = `/messages/${profileId}`;
+      } else if (n.type === 'message') {
+        link = `/messages/${profileId}`;
+      }
+      const content = escapeHtml(n.message);
+      const time = `<small>${new Date(n.createdAt).toLocaleString()}</small>`;
+      if (link) {
+        return `<div class="msg"><a href="${link}" style="color:#1d4ed8;display:block;text-decoration:none;">${content}</a> ${time}</div>`;
+      }
+      return `<div class="msg">${content} ${time}</div>`;
+    }).join('') : '<p>No notifications yet.</p>';
     const counts = await getCounts(profileId);
     const html = `<div class="hero"><h1>Notifications</h1></div><div class="chat-wrap">${list}</div><div class="top-actions"><a class="btn btn-gray" href="/profile/${profileId}">Back to Profile</a></div>`;
     res.send(pageShell("Notifications", html, req.params.profileId, counts));
@@ -721,7 +740,15 @@ app.post("/approve-message-request", async (req, res) => {
     if (!req.session.profileId) return res.status(401).send("Please login");
     const { requestId, action } = req.body;
     const status = action === 'approve' ? 'approved' : 'denied';
-    await MessageRequest.findByIdAndUpdate(requestId, { status });
+    const request = await MessageRequest.findByIdAndUpdate(requestId, { status }, { new: true });
+    if (request) {
+      await new Notification({
+        userId: request.fromId,
+        fromId: req.session.profileId,
+        type: status === 'approved' ? 'requestApproved' : 'requestDenied',
+        message: status === 'approved' ? 'Your friend request is approved! 🎉' : 'Your friend request was denied.'
+      }).save();
+    }
     res.redirect(`/messages/${req.session.profileId}`);
   } catch (err) {
     console.error("Error approving message request:", err);
@@ -743,7 +770,7 @@ io.on("connection", (socket) => {
     const parts = roomId.split('_');
     const id1 = parts[1], id2 = parts[2];
     const otherId = senderId === id1 ? id2 : id1;
-    await new Notification({ userId: otherId, message: "New anonymous message 💬" }).save();
+    await new Notification({ userId: otherId, fromId: senderId, type: 'message', message: "New anonymous message 💬" }).save();
   });
 });
 
