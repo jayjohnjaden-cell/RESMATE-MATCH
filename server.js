@@ -171,9 +171,12 @@ const messageSchema = new mongoose.Schema({
   roomId: String,
   senderId: mongoose.Schema.Types.ObjectId,
   senderAlias: String,
+  senderPicture: String,
   text: String,
   createdAt: { type: Date, default: Date.now },
   read: { type: Boolean, default: false },
+  delivered: { type: Boolean, default: false },
+  seen: { type: Boolean, default: false },
 });
 
 const notificationSchema = new mongoose.Schema({
@@ -339,9 +342,14 @@ textarea{min-height:100px;resize:vertical}
 .btn-pink{background:#e41e3f}.btn-pink:hover{background:#c91a2e}
 .btn-gray{background:#b0b8c1}.btn-gray:hover{background:#96a0aa}
 .top-actions{display:flex;flex-wrap:wrap;gap:8px}
-.msg{max-width:75%;padding:10px 14px;margin:8px 0;border-radius:20px;line-height:1.4;word-wrap:break-word;display:inline-block}
+.msg{max-width:75%;padding:10px 14px;margin:8px 0;border-radius:20px;line-height:1.4;word-wrap:break-word;display:flex;align-items:flex-start;gap:8px}
+.msg .avatar{width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.msg .msg-body{background:none;padding:0;margin:0}.msg .msg-body strong{display:block;font-weight:700;margin-bottom:4px}
 .msg.sent{background:#003366;color:white;margin-left:auto;text-align:right;border-top-right-radius:2px;border-top-left-radius:20px;border-bottom-left-radius:20px;border-bottom-right-radius:2px}
 .msg.received{background:#e4e6eb;color:#050505;margin-right:auto;text-align:left;border-top-right-radius:20px;border-top-left-radius:2px;border-bottom-left-radius:2px;border-bottom-right-radius:20px}
+.msg .status-wrap{margin-top:4px;font-size:11px;}
+.msg .status{color:#fff;background:rgba(0,0,0,.2);padding:2px 6px;border-radius:10px;font-size:11px;font-weight:600}
+.msg.received .status{background:rgba(0,0,0,.1);color:#333}
 #messages{height:420px;overflow-y:auto;background:#f0f2f5;border:1px solid #cce1e6;border-radius:12px;padding:12px}
 .conversation-card{cursor:pointer;transition:all .2s ease;display:flex;align-items:center;gap:12px;padding:12px}
 .conversation-card:hover{background:#f0f2f5;border-radius:8px}
@@ -802,13 +810,124 @@ app.get("/chat/:roomId/:fromId", async (req, res) => {
     // Mark messages from the other user as read
     await Message.updateMany(
       { roomId, senderId: toId, read: false },
-      { read: true }
+      { read: true, seen: true }
     );
+
     const msgHTML = messages.map(m => {
       const sideClass = m.senderId.toString() === fromId.toString() ? 'sent' : 'received';
-      return `<div class="msg ${sideClass}"><strong>${escapeHtml(m.senderAlias)}:</strong> ${escapeHtml(m.text)}</div>`;
+      const avatarUrl = m.senderPicture ? `/uploads/${m.senderPicture}` : 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=80&q=80';
+      const status = m.senderId.toString() === fromId.toString() ? (m.seen ? '<span class="status">Seen</span>' : '<span class="status">Delivered</span>') : '';
+      const messageId = m._id ? `data-msg-id="${m._id}"` : '';
+      return `<div class="msg ${sideClass}" ${messageId}><img class="avatar" src="${avatarUrl}" alt="avatar"/><div class="msg-body"><strong>${escapeHtml(m.senderAlias)}</strong> ${escapeHtml(m.text)}<div class="status-wrap">${status}</div></div></div>`;
     }).join("");
-    const html = `<div class="chat-wrap"><h1>💬 Anonymous Private Chat</h1><p><strong>You are chatting as:</strong> ${escapeHtml(profile.alias)}</p><div id="messages">${msgHTML}</div><div class="chat-row"><input id="msgInput" placeholder="Type an anonymous message"/><button onclick="sendMsg()">Send</button></div><div class="top-actions"><a class="btn btn-gray" href="/messages/${fromId}">Back to Messages</a></div></div><script src="/socket.io/socket.io.js"><\/script><script>const socket=io();const roomId=${JSON.stringify(roomId)};const senderId=${JSON.stringify(fromId)};const senderAlias=${JSON.stringify(profile.alias)};const messagesDiv=document.getElementById('messages');const msgInput=document.getElementById('msgInput');socket.emit('joinRoom',{roomId});function appendMessage(sender,text,cls){const div=document.createElement('div');div.className='msg '+(cls||'received');const strong=document.createElement('strong');strong.textContent=sender+': ';div.appendChild(strong);div.appendChild(document.createTextNode(text));messagesDiv.appendChild(div);messagesDiv.scrollTop=messagesDiv.scrollHeight;}function sendMsg(){const text=msgInput.value.trim();if(!text)return;appendMessage(senderAlias,text,'sent');socket.emit('privateMessage',{roomId,text,senderId,senderAlias});msgInput.value='';}msgInput.addEventListener('keydown',function(e){if(e.key==='Enter')sendMsg();});socket.on('privateMessage',function(data){if(data.senderId!==senderId){appendMessage(data.senderAlias,data.text,'received');}});<\/script>`;
+
+    const html = `<div class="chat-wrap"><h1>💬 Anonymous Private Chat</h1><p><strong>You are chatting as:</strong> ${escapeHtml(profile.alias)}</p><div id="messages">${msgHTML}</div><div id="typingIndicator" class="typing-indicator" style="min-height:20px;margin:8px 0;color:#666;">&nbsp;</div><div class="chat-row"><button id="emojiBtn" class="btn btn-gray" type="button" style="margin-right:8px;">😊</button><input type="file" id="attachmentInput" style="display:none;" accept="image/*"/><button id="attachBtn" class="btn btn-gray" type="button" style="margin-right:8px;">📎</button><input id="msgInput" placeholder="Type an anonymous message (Shift+Enter newline, Enter send)" style="flex:1;"/><button id="sendBtn" class="btn btn-blue" type="button">Send</button></div><div class="top-actions"><a class="btn btn-gray" href="/messages/${fromId}">Back to Messages</a></div></div><script src="/socket.io/socket.io.js"><\/script><script>
+      const socket = io();
+      const roomId = ${JSON.stringify(roomId)};
+      const senderId = ${JSON.stringify(fromId)};
+      const senderAlias = ${JSON.stringify(profile.alias)};
+      const messagesDiv = document.getElementById('messages');
+      const msgInput = document.getElementById('msgInput');
+      const typingIndicator = document.getElementById('typingIndicator');
+      const emojiBtn = document.getElementById('emojiBtn');
+      const attachBtn = document.getElementById('attachBtn');
+      const attachmentInput = document.getElementById('attachmentInput');
+      const sendBtn = document.getElementById('sendBtn');
+
+      socket.emit('joinRoom', { roomId });
+
+      function appendMessage(sender, text, cls, avatar, statusText, messageId) {
+        const div = document.createElement('div');
+        div.className = 'msg ' + (cls || 'received');
+        if (messageId) {
+          div.setAttribute('data-msg-id', messageId);
+        }
+
+        const img = document.createElement('img');
+        img.className = 'avatar';
+        img.src = avatar || 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=80&q=80';
+        div.appendChild(img);
+
+        const body = document.createElement('div');
+        body.className = 'msg-body';
+        const strong = document.createElement('strong');
+        strong.textContent = sender + ': ';
+        body.appendChild(strong);
+        body.appendChild(document.createTextNode(text));
+
+        if (statusText) {
+          const statusEl = document.createElement('div');
+          statusEl.className = 'status-wrap';
+          statusEl.innerHTML = '<span class="status">' + statusText + '</span>';
+          body.appendChild(statusEl);
+        }
+
+        div.appendChild(body);
+        messagesDiv.appendChild(div);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
+
+      function sendMsg() {
+        const text = msgInput.value.trim();
+        if (!text) return;
+        socket.emit('privateMessage', { roomId, text, senderId, senderAlias });
+        msgInput.value = '';
+      }
+
+      sendBtn.addEventListener('click', sendMsg);
+
+      let typingTimeout;
+      msgInput.addEventListener('input', () => {
+        socket.emit('typing', { roomId, senderAlias });
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => typingIndicator.textContent = ' ', 1200);
+      });
+
+      msgInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendMsg();
+        }
+      });
+
+      socket.on('typing', (data) => {
+        if (!data.senderAlias) return;
+        typingIndicator.textContent = data.senderAlias + ' is typing...';
+      });
+
+      socket.on('privateMessage', (data) => {
+        if (data.senderId === senderId) {
+          appendMessage(data.senderAlias, data.text, 'sent', data.senderPicture, data.seen ? 'Seen' : 'Delivered', data.messageId);
+          return;
+        }
+        // incoming message
+        appendMessage(data.senderAlias, data.text, 'received', data.senderPicture, 'Delivered', data.messageId);
+        socket.emit('messageSeen', { messageId: data.messageId });
+      });
+
+      socket.on('messageSeen', (data) => {
+        if (!data.messageId) return;
+        const msgDiv = messagesDiv.querySelector('[data-msg-id="' + data.messageId + '"]');
+        if (msgDiv) {
+          const statusEl = msgDiv.querySelector('.status-wrap');
+          if (statusEl) statusEl.innerHTML = '<span class="status">Seen</span>';
+        }
+      });
+
+      emojiBtn.addEventListener('click', () => {
+        const emoji = prompt('Enter emoji (e.g., 😊):');
+        if (emoji) {
+          msgInput.value += emoji;
+          msgInput.focus();
+        }
+      });
+
+      attachBtn.addEventListener('click', () => attachmentInput.click());
+      attachmentInput.addEventListener('change', () => {
+        if (!attachmentInput.files.length) return;
+        alert('Image upload is available in second-phase (future enhancement)');
+      });
+    <\/script>`;
     res.send(pageShell("Chat", html, req.params.fromId));
   } catch (err) {
     console.error("Error in chat:", err);
@@ -1004,18 +1123,57 @@ io.on("connection", (socket) => {
   socket.on("joinRoom", ({ roomId }) => {
     socket.join(roomId);
   });
+
+  socket.on("typing", ({ roomId, senderAlias }) => {
+    if (!roomId) return;
+    socket.to(roomId).emit("typing", { senderAlias });
+  });
+
   socket.on("privateMessage", async (data) => {
     const { roomId, text, senderId, senderAlias } = data;
     if (!roomId || !text || !senderId) return;
-    const message = new Message({ roomId, senderId, text, senderAlias });
+
+    const senderProfile = await Profile.findById(senderId);
+    const senderPicture = senderProfile ? senderProfile.picture : null;
+
+    const message = new Message({
+      roomId,
+      senderId,
+      senderAlias,
+      senderPicture,
+      text,
+      delivered: true,
+      seen: false,
+      read: true
+    });
     await message.save();
-    // Send to everyone except the sender to prevent duplicate rendering
-    socket.to(roomId).emit("privateMessage", { text, senderAlias, senderId });
+
+    // Send to everyone including sender so app can render with messageId/status
+    io.to(roomId).emit("privateMessage", {
+      messageId: message._id,
+      text,
+      senderAlias,
+      senderId,
+      senderPicture,
+      delivered: message.delivered,
+      seen: message.seen
+    });
+
     // Send notification to other participant
     const parts = roomId.split('_');
     const id1 = parts[1], id2 = parts[2];
     const otherId = senderId === id1 ? id2 : id1;
     await new Notification({ userId: otherId, fromId: senderId, type: 'message', message: "New anonymous message 💬" }).save();
+  });
+
+  socket.on("messageSeen", async ({ messageId }) => {
+    if (!messageId) return;
+    await Message.findByIdAndUpdate(messageId, { seen: true });
+    // Optionally broadcast seen status updates
+    const msg = await Message.findById(messageId);
+    if (msg) {
+      io.to(msg.roomId).emit("messageSeen", { messageId });
+    }
   });
 });
 
