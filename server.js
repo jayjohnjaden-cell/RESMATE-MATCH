@@ -530,7 +530,7 @@ app.get("/discover/:profileId", async (req, res) => {
   try {
     const currentProfile = await Profile.findById(req.params.profileId);
     if (!currentProfile) return res.status(404).send("Profile not found");
-    const otherProfiles = await Profile.find({ _id: { $ne: currentProfile._id }, mode: currentProfile.mode });
+    const otherProfiles = await Profile.find({ _id: { $ne: currentProfile._id } });
     const myMatches = await Match.find({ $or: [{ fromId: currentProfile._id }, { toId: currentProfile._id }] });
     const matchedIds = new Set(myMatches.map(m => m.fromId.toString() === currentProfile._id.toString() ? m.toId.toString() : m.fromId.toString()));
     const profileCards = otherProfiles.map(p => {
@@ -732,6 +732,52 @@ app.get("/messages/:profileId", async (req, res) => {
   } catch (err) {
     console.error("Error in messages:", err);
     res.status(500).send("Error loading messages");
+  }
+});
+
+app.get("/requests/:profileId", async (req, res) => {
+  try {
+    const profileId = req.params.profileId;
+    if (!req.session.profileId || req.session.profileId !== profileId) {
+      return res.redirect('/login');
+    }
+    const profile = await Profile.findById(profileId);
+    if (!profile) return res.status(404).send("Profile not found");
+
+    // Get pending message requests
+    const pendingRequests = await MessageRequest.find({ toId: profileId, status: 'pending' }).populate('fromId', 'alias picture about gender mode').sort({ createdAt: -1 });
+
+    const requestCards = pendingRequests.map(r => `
+      <div class="card" style="display:flex;align-items:center;gap:12px;">
+        <img class="blurred" src="${r.fromId.picture ? '/uploads/' + r.fromId.picture : 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=100&q=80'}" alt="profile" style="width:80px;height:80px;border-radius:50%;object-fit:cover;"/>
+        <div style="flex:1;">
+          <h3 style="margin:0;">${escapeHtml(r.fromId.alias)}</h3>
+          <p style="margin:4px 0;color:#666;font-size:14px;"><strong>Bio:</strong> ${escapeHtml(r.fromId.about.substring(0, 80))}${r.fromId.about.length > 80 ? '...' : ''}</p>
+          <small style="color:#666;"><strong>Gender:</strong> ${r.fromId.gender} | <strong>Looking for:</strong> ${r.fromId.mode}</small>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <form method="POST" action="/approve-message-request" style="display:inline;margin:0;">
+            <input type="hidden" name="requestId" value="${r._id}"/>
+            <button class="btn btn-blue" type="submit" name="action" value="approve">✓ Confirm</button>
+          </form>
+          <form method="POST" action="/approve-message-request" style="display:inline;margin:0;">
+            <input type="hidden" name="requestId" value="${r._id}"/>
+            <button class="btn btn-gray" type="submit" name="action" value="deny">✗ Decline</button>
+          </form>
+        </div>
+      </div>
+    `).join('');
+
+    const counts = await getCounts(profileId);
+    const html = `
+      <div class="hero"><h1>Friend Requests</h1><p>Manage who can message you</p></div>
+      ${pendingRequests.length > 0 ? `<div class="grid">${requestCards}</div>` : `<div class="form"><h3>No pending friend requests</h3><p>When people send you friend requests, they'll appear here. Go to <a href="/discover/${profileId}">discover</a> to send requests to others!</p></div>`}
+      <div class="top-actions"><a class="btn" href="/discover/${profileId}">Discover Friends</a><a class="btn btn-gray" href="/messages/${profileId}">Back to Messages</a></div>
+    `;
+    res.send(pageShell("Requests", html, req.params.profileId, counts));
+  } catch (err) {
+    console.error("Error in requests:", err);
+    res.status(500).send("Error loading requests");
   }
 });
 
