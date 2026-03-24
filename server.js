@@ -257,8 +257,116 @@ async function getCounts(userId) {
 }
 
 function pageShell(title, body, profileId = null, counts = {}) {
-  const nav = profileId ? `<nav style="background:#f0f2f5;border-bottom:1px solid #dadde1;padding:0;margin-bottom:24px;display:flex;"><a class="fb-tab ${title === 'Home' ? 'active' : ''}" href="/">🏠 Home</a><a class="fb-tab ${title === 'Discover' ? 'active' : ''}" href="/discover/${profileId}">🔍 Discover</a><a class="fb-tab ${title === 'Matches' ? 'active' : ''}" href="/matches/${profileId}">❤️ Matches</a><a class="fb-tab ${title.includes('Profile') ? 'active' : ''}" href="/profile/${profileId}">👤 Profile</a><a class="fb-tab ${title === 'News Feed' ? 'active' : ''}" href="/newsfeed">📰 Feed</a><a class="fb-tab ${title === 'Requests' ? 'active' : ''}" href="/requests/${profileId}">📨 Requests ${counts.requests ? `(${counts.requests})` : ''}</a><a class="fb-tab ${title === 'Notifications' ? 'active' : ''}" href="/notifications/${profileId}">🔔 Notifications ${counts.notifications ? `(${counts.notifications})` : ''}</a><a class="fb-tab ${title === 'Messages' ? 'active' : ''}" href="/messages/${profileId}">💬 Messages ${counts.unopenedMessages ? `(${counts.unopenedMessages})` : ''}</a></nav>` : `<nav style="background:#f0f2f5;border-bottom:1px solid #dadde1;padding:0;margin-bottom:24px;display:flex;"><a class="fb-tab" href="/">🏠 Home</a><a class="fb-tab" href="/newsfeed">📰 News Feed</a></nav>`;
-  return `<!DOCTYPE html><html><head><title>${escapeHtml(title)}</title><meta name="viewport" content="width=device-width, initial-scale=1.0"/><style>*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#ff9a9e,#fad0c4,#fbc2eb,#a6c1ee);min-height:100vh;padding:24px;color:#111}a{color:#093b70;text-decoration:none}a:hover{text-decoration:underline}.container{max-width:1150px;margin:auto}.hero{background:rgba(255,255,255,.3);color:#1f2937;border-radius:26px;padding:28px;box-shadow:0 12px 30px rgba(0,0,0,.2);backdrop-filter:blur(8px);margin-bottom:24px}.hero h1{margin:0 0 10px;font-size:2.2rem}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}.card,.form,.feature,.chat-wrap{background:white;border-radius:22px;padding:18px;box-shadow:0 16px 30px rgba(15,23,42,.15)}.feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;margin:22px 0}.card{position:relative;border:1px solid #e5e7eb}.card img,.profile-cover{width:100%;border-radius:16px;margin-bottom:12px;display:block}.tag,.pill{display:inline-block;padding:6px 12px;border-radius:999px;color:white;font-size:12px;font-weight:bold}.tag{position:absolute;top:16px;right:16px}.date{background:#ef4444}.friend{background:#0ea5e9}input,textarea,select{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:12px;margin-top:8px;margin-bottom:16px;font-size:15px;outline:none;transition:all .2s ease}input:focus,textarea:focus,select:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.2)}textarea{min-height:140px;resize:vertical}.btn,button{background:#1f2937;color:white;border:none;border-radius:12px;padding:12px 16px;text-decoration:none;cursor:pointer;display:inline-block;margin-right:8px;margin-top:8px;transition:transform .1s ease,box-shadow .1s ease}.btn:hover,button:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(15,23,42,.2)}.btn-pink{background:#ec4899}.btn-blue{background:#0284c7}.btn-gray{background:#6b7280}.top-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}#messages{height:350px;overflow:auto;background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:14px;margin-bottom:14px}.msg{margin-bottom:10px;padding:10px 12px;background:#fff;border-radius:12px;border:1px solid #e8f0fe}.chat-row{display:flex;gap:10px}.chat-row input{margin:0;flex:1}@media (max-width:700px){body{padding:14px}.hero h1{font-size:1.7rem}.chat-row{flex-direction:column}}.conversation-card:hover{background:#f8f9fa;border-color:#e1e5e9}.conversation-card h4{margin:0;font-weight:600}.conversation-card p{margin:4px 0;color:#65676b;font-size:14px}.blurred{filter:blur(5px)}.tags{margin:10px 0}.tags .pill{margin-right:5px}.footer-custom{margin-top:24px;padding:10px;color:#1f2937;text-align:center;font-weight:700}.fb-tab{display:inline-block;padding:12px 16px;color:#65676b;text-decoration:none;border-bottom:3px solid transparent;font-weight:600;font-size:14px;margin-right:8px}.fb-tab:hover{color:#1c1e21;background:#e7f3ff}.fb-tab.active{color:#1877f2;border-bottom-color:#1877f2;background:#e7f3ff}</style></head><body><div class="container">${nav}${body}</div><div class="footer-custom">BY JABULANI SHIBAMBO @0725601834 CAPITEC ACCEPTED</div></body></html>`;
+  const headerNav = profileId ? `
+    <div class="header-nav">
+      <a href="/" class="nav-item ${title === 'Home' ? 'active' : ''}"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></a>
+      <a href="/discover/${profileId}" class="nav-item ${title === 'Discover' ? 'active' : ''}"><span class="nav-icon">🔍</span><span class="nav-label">Discover</span></a>
+      <a href="/messages/${profileId}" class="nav-item ${title === 'Messages' ? 'active' : ''}"><span class="nav-icon">💬</span><span class="nav-label">Messages${counts.unopenedMessages ? ` <span class="badge">${counts.unopenedMessages}</span>` : ''}</span></a>
+      <a href="/requests/${profileId}" class="nav-item ${title === 'Requests' ? 'active' : ''}"><span class="nav-icon">👥</span><span class="nav-label">Requests${counts.requests ? ` <span class="badge">${counts.requests}</span>` : ''}</span></a>
+      <a href="/notifications/${profileId}" class="nav-item ${title === 'Notifications' ? 'active' : ''}"><span class="nav-icon">🔔</span><span class="nav-label">Notifications${counts.notifications ? ` <span class="badge">${counts.notifications}</span>` : ''}</span></a>
+      <a href="/profile/${profileId}" class="nav-item ${title.includes('Profile') ? 'active' : ''}"><span class="nav-icon">👤</span><span class="nav-label">Profile</span></a>
+      <a href="/matches/${profileId}" class="nav-item ${title === 'Matches' ? 'active' : ''}"><span class="nav-icon">❤️</span><span class="nav-label">Matches</span></a>
+      <a href="/newsfeed" class="nav-item ${title === 'News Feed' ? 'active' : ''}"><span class="nav-icon">📰</span><span class="nav-label">Feed</span></a>
+    </div>
+  ` : `
+    <div class="header-nav">
+      <a href="/" class="nav-item active"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></a>
+      <a href="/newsfeed" class="nav-item ${title === 'News Feed' ? 'active' : ''}"><span class="nav-icon">📰</span><span class="nav-label">Feed</span></a>
+    </div>
+  `;
+
+  return `<!DOCTYPE html><html><head><title>${escapeHtml(title)}</title><meta name="viewport" content="width=device-width, initial-scale=1.0"/><style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;background:#f0f2f5;color:#050505}
+a{color:#0a66c2;text-decoration:none}a:hover{text-decoration:underline}
+#fb-header{background:white;border-bottom:1px solid #cce1e6;padding:8px 0;position:sticky;top:0;z-index:100;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.header-content{max-width:1400px;margin:0 auto;padding:0 16px;display:flex;align-items:center;justify-content:space-between}
+.fb-logo{font-size:28px;font-weight:bold;color:#0a66c2;margin-right:20px}
+.header-nav{display:flex;gap:0;flex:1;border-bottom:1px solid #cce1e6}
+.nav-item{display:flex;align-items:center;gap:6px;padding:12px 16px;color:#65676b;text-decoration:none;border-bottom:3px solid transparent;transition:all .2s ease;cursor:pointer;white-space:nowrap;position:relative;font-weight:500;font-size:14px}
+.nav-item:hover{color:#0a66c2;background:#f0f2f5}
+.nav-item.active{color:#0a66c2;border-bottom-color:#0a66c2}
+.nav-icon{font-size:18px}
+.nav-label{font-size:13px}
+.badge{background:#e41e3f;color:white;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;margin-left:4px}
+#main-wrapper{max-width:1400px;margin:0 auto;padding:16px;display:grid;grid-template-columns:0 1fr 0;gap:20px}
+@media (min-width:1280px){#main-wrapper{grid-template-columns:280px 1fr 320px}}
+.sidebar{background:white;border-radius:8px;padding:16px;height:fit-content;border:1px solid #cce1e6}
+.sidebar h3{font-size:13px;font-weight:600;color:#65676b;margin-bottom:12px}
+.sidebar a{display:block;padding:8px 0;color:#0a66c2;font-size:14px}
+.sidebar a:hover{color:#004182}
+#content{background:white;border-radius:8px;padding:28px;border:1px solid #cce1e6;min-height:calc(100vh - 200px)}
+#content h1{font-size:28px;color:#050505;margin-bottom:20px;font-weight:600}
+#content h2{font-size:18px;color:#050505;margin-top:20px;margin-bottom:12px;font-weight:600}
+#content h3{font-size:16px;color:#050505;margin-top:16px;margin-bottom:10px;font-weight:600}
+.hero{background:linear-gradient(135deg,#0a66c2 0%,#0d78c1 100%);color:white;border-radius:8px;padding:32px;margin-bottom:20px;text-align:center}
+.hero h1{color:white;margin-bottom:12px}
+.hero p{font-size:15px;line-height:1.5}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin:16px 0}
+.card{background:white;border:1px solid #cce1e6;border-radius:8px;padding:16px;transition:all .2s ease}
+.card:hover{box-shadow:0 2px 4px rgba(0,0,0,.1)}
+.card img,.profile-cover{width:100%;border-radius:8px;margin-bottom:12px;display:block}
+.card h3{font-size:15px;font-weight:600;color:#050505;margin:12px 0 8px}
+.card p{font-size:13px;color:#65676b;line-height:1.4;margin:8px 0}
+.card .tags{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+.pill{display:inline-block;padding:6px 12px;border-radius:999px;background:#e7f3ff;color:#0a66c2;font-size:12px;font-weight:600}
+.card .top-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.form{background:white;border:1px solid #cce1e6;border-radius:8px;padding:20px;margin:16px 0}
+.form h2{margin-top:0}
+.form label{display:block;font-weight:600;color:#050505;font-size:14px;margin:16px 0 6px}
+.form label:first-of-type{margin-top:0}
+input,textarea,select{width:100%;padding:10px 12px;border:1px solid #b0b8c1;border-radius:6px;font-size:14px;font-family:inherit;margin:6px 0 12px;transition:all .2s ease}
+input:focus,textarea:focus,select:focus{border-color:#0a66c2;outline:none;box-shadow:0 0 0 3px rgba(10,102,194,.15)}
+textarea{min-height:100px;resize:vertical}
+.btn,button{background:#0a66c2;color:white;border:none;border-radius:6px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block;transition:all .2s ease;margin:6px 6px 6px 0}
+.btn:hover,button:hover{background:#004182}
+.btn-blue{background:#0a66c2}.btn-blue:hover{background:#004182}
+.btn-pink{background:#e41e3f}.btn-pink:hover{background:#c91a2e}
+.btn-gray{background:#b0b8c1}.btn-gray:hover{background:#96a0aa}
+.top-actions{display:flex;flex-wrap:wrap;gap:8px}
+.msg{background:#f0f2f5;padding:12px 16px;border-radius:8px;margin:8px 0;border-left:3px solid #0a66c2}
+.conversation-card{cursor:pointer;transition:all .2s ease;display:flex;align-items:center;gap:12px;padding:12px}
+.conversation-card:hover{background:#f0f2f5;border-radius:8px}
+.conversation-card h4{margin:0;font-weight:600;color:#050505}
+.conversation-card p{margin:4px 0;color:#65676b;font-size:13px}
+.blurred{filter:blur(6px)}
+.feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:16px 0}
+.feature{background:white;border:1px solid #cce1e6;border-radius:8px;padding:16px;text-align:center}
+.feature h3{font-size:14px;margin:8px 0}
+.feature p{font-size:12px;color:#65676b}
+.footer-custom{text-align:center;padding:20px;color:#65676b;font-size:12px;margin-top:20px}
+@media (max-width:1279px){#main-wrapper{grid-template-columns:1fr}.sidebar{display:none}}
+@media (max-width:768px){#content{padding:16px}.hero{padding:20px}.grid{grid-template-columns:1fr}.nav-label{display:none}}
+.chat-wrap{background:white;border:1px solid #cce1e6;border-radius:8px;padding:20px}
+#messages{height:400px;overflow-y:auto;background:#f0f2f5;border:1px solid #cce1e6;border-radius:8px;padding:12px;margin:12px 0}
+.chat-row{display:flex;gap:8px;margin-top:12px}
+.chat-row input{flex:1;margin:0}
+.chat-row button{margin:0;flex-shrink:0}
+</style></head><body>
+<div id="fb-header">
+  <div class="header-content">
+    <div class="fb-logo">💘 Resmate Match</div>
+  </div>
+  ${headerNav}
+</div>
+<div id="main-wrapper">
+  <div class="sidebar">
+    <h3>QUICK LINKS</h3>
+    <a href="/discover/${profileId || '#'}">🔍 Discover People</a>
+    <a href="/messages/${profileId || '#'}">💬 Messages</a>
+    <a href="/profile/${profileId || '#'}">👤 My Profile</a>
+    <a href="/logout" style="color:#e41e3f;margin-top:12px;">🚪 Logout</a>
+  </div>
+  <div id="content">
+    ${body}
+  </div>
+  <div class="sidebar">
+    <h3>ONLINE FRIENDS</h3>
+    <p style="font-size:13px;color:#65676b;">Online friends will appear here</p>
+  </div>
+</div>
+<div class="footer-custom">BY JABULANI SHIBAMBO @0725601834 CAPITEC ACCEPTED</div>
+</body></html>`;
 }
 
 app.get("/", async (req, res) => {
