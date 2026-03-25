@@ -13,19 +13,16 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 const PORT = process.env.PORT || 3000;
+const onlineUsers = new Set();
 
-app.use(session({
-  secret: 'resmatematch_secret_2026',
-  resave: false,
-  saveUninitialized: false,
-  store: MongoStore.create({
-    mongoUrl: process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/resmatematch',
-    ttl: 3 * 60 * 60 // 3 hours
-  }),
-  cookie: { maxAge: 1000 * 60 * 60 * 3 } // 3 hours
-}));
+// Normalize MongoDB URI early
+const rawMongoURI = process.env.MONGODB_URI;
+console.log("rawMongoURI:", rawMongoURI);
 
-// Connect to MongoDB via local server first; fallback to Atlas if MONGODB_URI is set
+function isValidMongoUri(uri) {
+  return typeof uri === 'string' && /^mongodb(?:\+srv)?:\/\//i.test(uri.trim());
+}
+
 function normalizeMongoURI(uri) {
   if (!uri || typeof uri !== 'string') return uri;
   let fixed = uri.trim();
@@ -38,10 +35,27 @@ function normalizeMongoURI(uri) {
   return fixed;
 }
 
-const rawMongoURI = process.env.MONGODB_URI;
-console.log("rawMongoURI:", rawMongoURI);
 let mongoURI = normalizeMongoURI(rawMongoURI);
+if (mongoURI && !isValidMongoUri(mongoURI)) {
+  console.warn("Normalized Mongo URI is invalid, falling back to local URI:", mongoURI);
+  mongoURI = null;
+}
 console.log("normalized mongoURI:", mongoURI);
+
+const sessionMongoURI = mongoURI || 'mongodb://127.0.0.1:27017/resmatematch';
+
+app.use(session({
+  secret: 'resmatematch_secret_2026',
+  resave: false,
+  saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: sessionMongoURI,
+    ttl: 3 * 60 * 60 // 3 hours
+  }),
+  cookie: { maxAge: 1000 * 60 * 60 * 3 } // 3 hours
+}));
+
+// Connect to MongoDB via local server first; fallback to Atlas if MONGODB_URI is set
 let mongoStatus = "disconnected";
 let mongoErrorMsg = null;
 let mongoMessage = "";
@@ -55,42 +69,42 @@ const mongoOptions = {
 };
 
 async function connectToMongo() {
-  if (!mongoURI) {
-    mongoMessage = "MONGODB_URI is not set; trying local fallback.";
-  }
-
-  for (const candidate of uriCandidates) {
-    if (!/^mongodb(?:\+srv)?:\/\//i.test(candidate)) {
-      console.error("Skipping invalid MongoDB URI scheme:", candidate);
-      continue;
+  try {
+    if (!mongoURI) {
+      mongoMessage = "MONGODB_URI is not set; trying local fallback.";
     }
 
-    try {
-      await mongoose.connect(candidate, mongoOptions);
-      mongoURI = candidate;
-      mongoStatus = "connected";
-      mongoErrorMsg = null;
-      console.log("MongoDB connected to", candidate);
-      return;
-    } catch (err) {
-      mongoStatus = "error";
-      mongoErrorMsg = err.message || err.toString();
-      mongoMessage = `Failed connection for ${candidate}`;
-      console.error(`MongoDB connection error for ${candidate}:`, err);
-    }
-  }
+    for (const candidate of uriCandidates) {
+      if (!/^mongodb(?:\+srv)?:\/\//i.test(candidate)) {
+        console.error("Skipping invalid MongoDB URI scheme:", candidate);
+        continue;
+      }
 
-  if (mongoStatus !== "connected") {
-    mongoStatus = "disconnected";
-    console.warn("MongoDB not connected after attempting all URIs.");
+      try {
+        await mongoose.connect(candidate, mongoOptions);
+        mongoURI = candidate;
+        mongoStatus = "connected";
+        mongoErrorMsg = null;
+        console.log("MongoDB connected to", candidate);
+        return;
+      } catch (err) {
+        mongoStatus = "error";
+        mongoErrorMsg = err.message || err.toString();
+        mongoMessage = `Failed connection for ${candidate}`;
+        console.error(`MongoDB connection error for ${candidate}:`, err);
+      }
+    }
+
+    if (mongoStatus !== "connected") {
+      mongoStatus = "disconnected";
+      console.warn("MongoDB not connected after attempting all URIs.");
+    }
+  } catch (err) {
+    mongoStatus = "error";
+    mongoErrorMsg = err.message || err.toString();
+    console.error("Unexpected error in connectToMongo:", err);
   }
 }
-
-connectToMongo().catch(err => {
-  mongoStatus = "error";
-  mongoErrorMsg = err.message || err.toString();
-  console.error("MongoDB connection initializer failed:", err);
-});
 
 mongoose.connection.on("connected", () => {
   mongoStatus = "connected";
@@ -173,6 +187,7 @@ const messageSchema = new mongoose.Schema({
   senderAlias: String,
   senderPicture: String,
   text: String,
+  image: String,
   createdAt: { type: Date, default: Date.now },
   read: { type: Boolean, default: false },
   delivered: { type: Boolean, default: false },
@@ -200,11 +215,22 @@ const postSchema = new mongoose.Schema({
     sad: { type: Number, default: 0 },
     angry: { type: Number, default: 0 },
   },
+  reactionsBy: [{
+    userId: mongoose.Schema.Types.ObjectId,
+    reaction: { type: String, enum: ['like','love','haha','wow','sad','angry'] }
+  }],
   comments: [{
+    _id: { type: mongoose.Schema.Types.ObjectId, auto: true },
     userId: mongoose.Schema.Types.ObjectId,
     alias: String,
     text: String,
-    createdAt: { type: Date, default: Date.now }
+    createdAt: { type: Date, default: Date.now },
+    replies: [{
+      userId: mongoose.Schema.Types.ObjectId,
+      alias: String,
+      text: String,
+      createdAt: { type: Date, default: Date.now }
+    }]
   }],
   createdAt: { type: Date, default: Date.now },
 });
@@ -329,6 +355,13 @@ a{color:#003366;text-decoration:none}a:hover{text-decoration:underline}
 .card .tags{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
 .pill{display:inline-block;padding:6px 12px;border-radius:999px;background:#e7f3ff;color:#003366;font-size:12px;font-weight:600}
 .card .top-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.profile-hover{cursor:pointer;color:#003366;text-decoration:underline;}
+.online-dot{color:#16a34a;font-size:14px;margin-left:8px;}
+.offline-dot{color:#9ca3af;font-size:14px;margin-left:8px;}
+.profile-tooltip{position:absolute;z-index:9999;background:white;border:1px solid #cce1e6;border-radius:8px;box-shadow:0 3px 8px rgba(0,0,0,.15);padding:10px;min-width:220px;display:none;pointer-events:none;font-size:13px;}
+.profile-tooltip .avatar{width:42px;height:42px;border-radius:50%;object-fit:cover;border:1px solid #cce1e6;margin-right:8px;}
+.profile-tooltip .profile-title{font-weight:700;margin-bottom:4px;}
+.profile-tooltip .profile-layers{margin:4px 0;}
 .form{background:white;border:1px solid #cce1e6;border-radius:8px;padding:20px;margin:16px 0}
 .form h2{margin-top:0}
 .form label{display:block;font-weight:600;color:#050505;font-size:14px;margin:16px 0 6px}
@@ -398,9 +431,16 @@ textarea{min-height:100px;resize:vertical}
 app.get("/", async (req, res) => {
   try {
     if (!isDbConnected()) {
-      const hint = dbErrorHint();
-      const errMsg = `<div style="padding:24px; font-family:Arial, Helvetica, sans-serif; background:#fff;color:#b91c1c;border:2px solid #fca5a5;border-radius:12px;"><h2>Error loading profiles</h2><p>${escapeHtml(hint)}</p><p>Current URI: ${escapeHtml(mongoURI)}</p><p>${escapeHtml(mongoMessage || 'Check MONGODB_URI and Atlas IP whitelist.')}</p></div>`;
-      return res.status(500).send(pageShell("Error", errMsg));
+      try {
+        await connectToMongo();
+      } catch (e) {
+        // connection attempt failed
+      }
+      if (!isDbConnected()) {
+        const hint = dbErrorHint();
+        const errMsg = `<div style="padding:24px; font-family:Arial, Helvetica, sans-serif; background:#fff;color:#b91c1c;border:2px solid #fca5a5;border-radius:12px;"><h2>Error loading profiles</h2><p>${escapeHtml(hint)}</p><p>Current URI: ${escapeHtml(mongoURI)}</p><p>${escapeHtml(mongoMessage || 'Check MONGODB_URI and Atlas IP whitelist.')}</p></div>`;
+        return res.status(500).send(pageShell("Error", errMsg));
+      }
     }
 
     const profiles = await Profile.find();
@@ -486,22 +526,165 @@ app.get("/logout", (req, res) => {
 
 app.get("/newsfeed", async (req, res) => {
   try {
-    const posts = await Post.find().sort({ createdAt: -1 });
+    const page = Math.max(1, parseInt(req.query.page || '1', 10));
+    const pageSize = 5;
+    const skip = (page - 1) * pageSize;
+    const posts = await Post.find().sort({ createdAt: -1 }).skip(skip).limit(pageSize);
+    const isAjax = req.query.ajax === '1';
+    const currentProfileId = req.session.profileId;
+
     const postCards = posts.map(p => {
-      const reactionButtons = ['like','love','haha','wow','sad','angry'].map(type => `<form method="POST" style="display:inline;margin-right:4px;" action="/newsfeed/reaction"><input type="hidden" name="postId" value="${p._id}"/><input type="hidden" name="reaction" value="${type}"/><button class="btn btn-gray" type="submit" style="padding:4px 8px;font-size:12px;">${type.charAt(0).toUpperCase()+type.slice(1)} ${p.reactions?.[type]||0}</button></form>`).join('');
-      const commentsHtml = (p.comments || []).map(c => `<div class="comment"><strong>${escapeHtml(c.alias)}:</strong> ${escapeHtml(c.text)} <small style="color:#777;">${new Date(c.createdAt).toLocaleTimeString()}</small></div>`).join('');
+      const isOnline = onlineUsers.has(p.userId?.toString());
+      const userReaction = currentProfileId ? p.reactionsBy?.find(r => r.userId.toString() === currentProfileId.toString()) : null;
+      const reactionButtons = ['like','love','haha','wow','sad','angry'].map(type => {
+        const active = userReaction && userReaction.reaction === type ? 'active' : '';
+        return `<form method="POST" style="display:inline;margin-right:4px;" action="/newsfeed/reaction"><input type="hidden" name="postId" value="${p._id}"/><input type="hidden" name="reaction" value="${type}"/><button class="btn btn-gray reaction-btn ${active}" type="submit" style="padding:4px 8px;font-size:12px;">${type.charAt(0).toUpperCase()+type.slice(1)} ${p.reactions?.[type]||0}</button></form>`;
+      }).join('');
+
+      const commentsHtml = (p.comments || []).map(c => {
+        const replyHtml = (c.replies || []).map(r => `<div class="thread-reply"><strong class="profile-hover" data-userid="${r.userId}">${escapeHtml(r.alias)}</strong>: ${escapeHtml(r.text)} <small>${new Date(r.createdAt).toLocaleTimeString()}</small></div>`).join('');
+        return `<div class="comment"><strong class="profile-hover" data-userid="${c.userId}">${escapeHtml(c.alias)}</strong>: ${escapeHtml(c.text)} <small style="color:#777;">${new Date(c.createdAt).toLocaleTimeString()}</small> <button type="button" class="btn btn-gray btn-sm comment-reply-btn" data-post-id="${p._id}" data-comment-id="${c._id}">Reply</button>${replyHtml}</div>`;
+      }).join('');
+
+      const userOnlineBadge = isOnline ? '<span class="online-dot" title="Online">●</span>' : '<span class="offline-dot" title="Offline">○</span>';
       const img = p.image ? `<img src="/uploads/${p.image}" alt="post-image" style="max-width:100%;border-radius:8px;margin:8px 0;"/>` : '';
-      return `<div class="card"><h3>${escapeHtml(p.alias)}</h3><p>${escapeHtml(p.content)}</p>${img}<div>${reactionButtons}</div><div style="margin-top:8px;"><form method="POST" action="/newsfeed/comment"><input type="hidden" name="postId" value="${p._id}"/><input name="text" placeholder="Add a comment..." required style="width:70%;padding:8px;border:1px solid #b0b8c1;border-radius:6px;"/><button class="btn btn-blue" type="submit" style="margin-left:4px;padding:8px 12px;">Comment</button></form></div><div style="margin-top:8px;">${commentsHtml}</div><small>${new Date(p.createdAt).toLocaleString()}</small></div>`;
-    }).join("");
+      return `<div class="card post-card" data-post-id="${p._id}"><div class="post-header"><strong class="profile-hover" data-userid="${p.userId}">${escapeHtml(p.alias)}</strong> ${userOnlineBadge}</div><p>${escapeHtml(p.content)}</p>${img}<div>${reactionButtons}</div><div class="comments">${commentsHtml}</div><form method="POST" class="comment-form" action="/newsfeed/comment"><input type="hidden" name="postId" value="${p._id}"/><input type="hidden" name="parentCommentId" value="" class="parentCommentId"/><div class="comment-input-row"><button type="button" class="btn btn-gray btn-emoji" data-post-id="${p._id}">😊</button><input name="text" class="comment-input" placeholder="Write a comment..." required/><button class="btn btn-blue" type="submit">Comment</button></div></form></div>`;
+    }).join('');
+
+    if (isAjax) {
+      res.send(postCards);
+      return;
+    }
+
     let postForm = '';
-    if (req.session.profileId) {
-      const profile = await Profile.findById(req.session.profileId);
+    if (currentProfileId) {
+      const profile = await Profile.findById(currentProfileId);
       if (profile) {
-        postForm = `<div class="form"><h2>Post a Status</h2><form method="POST" action="/newsfeed" enctype="multipart/form-data"><textarea name="content" placeholder="What's on your mind?" required></textarea><label>Attach image (optional)</label><input type="file" name="image" accept="image/*"/><button type="submit">Post</button></form></div>`;
+        postForm = `<div class="form"><h2>Post a Status</h2><form method="POST" action="/newsfeed" enctype="multipart/form-data"><textarea name="content" placeholder="What's on your mind?" required></textarea><div style="margin:8px 0;"><button type="button" id="emojiPickerBtn" class="btn btn-gray">😊</button></div><label>Attach image (optional)</label><input type="file" name="image" accept="image/*"/><button type="submit" class="btn btn-blue">Post</button></form></div>`;
       }
     }
-    const html = `<div class="hero"><h1>📰 News Feed</h1><p>Share your thoughts and see what others are posting.</p></div>${postForm}<div class="grid">${postCards || '<div class="form"><p>No posts yet.</p></div>'}</div>`;
-    res.send(pageShell("News Feed", html, req.session.profileId));
+
+    const moreButton = posts.length === pageSize ? `<div style="text-align:center;margin:16px;"><button id="loadMoreBtn" class="btn btn-gray" data-next-page="${page + 1}">Load More</button></div>` : '';
+
+    const html = `<div class="hero"><h1>📰 News Feed</h1><p>Share your thoughts and see what others are posting.</p></div>${postForm}<div id="postsContainer" class="grid">${postCards || '<div class="form"><p>No posts yet.</p></div>'}</div>${moreButton}`;
+
+    const script = `<script>
+      document.addEventListener('click', function(e) {
+        if (e.target.matches('.btn-emoji')) {
+          const input = e.target.closest('.comment-form').querySelector('.comment-input');
+          if (input) { input.value += '😊'; input.focus(); }
+        }
+        if (e.target.matches('.comment-reply-btn')) {
+          const form = e.target.closest('.post-card').querySelector('.comment-form');
+          const commentId = e.target.getAttribute('data-comment-id');
+          if (form) {
+            form.querySelector('.parentCommentId').value = commentId;
+            form.querySelector('.comment-input').focus();
+          }
+        }
+      });
+
+      const loadMoreBtn = document.getElementById('loadMoreBtn');
+      if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', async function() {
+          const nextPage = this.getAttribute('data-next-page');
+          const response = await fetch('/newsfeed?page=' + nextPage + '&ajax=1');
+          const content = await response.text();
+          if (!content.trim()) { this.style.display = 'none'; return; }
+          document.getElementById('postsContainer').insertAdjacentHTML('beforeend', content);
+          this.setAttribute('data-next-page', parseInt(nextPage, 10) + 1);
+        });
+      }
+
+      const emojiPickerBtn = document.getElementById('emojiPickerBtn');
+      if (emojiPickerBtn) {
+        emojiPickerBtn.addEventListener('click', function() {
+          let panel = document.getElementById('globalEmojiPicker');
+          if (panel) {
+            panel.remove();
+            return;
+          }
+          panel = document.createElement('div');
+          panel.id = 'globalEmojiPicker';
+          panel.style.position = 'fixed';
+          panel.style.bottom = '80px';
+          panel.style.right = '30px';
+          panel.style.padding = '8px';
+          panel.style.background = 'white';
+          panel.style.border = '1px solid #ccc';
+          panel.style.borderRadius = '8px';
+          panel.style.boxShadow = '0 2px 4px rgba(0,0,0,.2)';
+          const emojis = ['😀','😂','😍','😮','😢','👍','👏','🥳','💡'];
+          emojis.forEach(e => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.style.border = 'none';
+            btn.style.background = 'transparent';
+            btn.style.fontSize = '20px';
+            btn.style.margin = '2px';
+            btn.textContent = e;
+            btn.addEventListener('click', () => {
+              const textarea = document.querySelector('textarea[name="content"]');
+              if (textarea) { textarea.value += e; textarea.focus(); }
+            });
+            panel.appendChild(btn);
+          });
+          document.body.appendChild(panel);
+        });
+      }
+
+      const tooltipEl = document.createElement('div');
+      tooltipEl.id = 'profileTooltip';
+      tooltipEl.className = 'profile-tooltip';
+      document.body.appendChild(tooltipEl);
+
+      let tooltipTimeout;
+      document.addEventListener('mouseover', async (e) => {
+        if (!e.target.matches('.profile-hover')) return;
+        clearTimeout(tooltipTimeout);
+        const userId = e.target.dataset.userid;
+        if (!userId) return;
+
+        const rect = e.target.getBoundingClientRect();
+        tooltipEl.style.top = (rect.bottom + window.scrollY + 8) + 'px';
+        tooltipEl.style.left = (rect.left + window.scrollX) + 'px';
+        tooltipEl.style.display = 'block';
+        tooltipEl.innerHTML = '<div>Loading...</div>';
+
+        try {
+          const response = await fetch('/profile-tooltip/' + encodeURIComponent(userId));
+          if (!response.ok) throw new Error('Not found');
+          const profile = await response.json();
+          tooltipEl.innerHTML = ''
+            + '<div style="display:flex;align-items:center;gap:8px;">'
+            + '<img class="avatar" src="' + profile.picture + '" alt="Avatar" />'
+            + '<div>'
+            + '<div class="profile-title">' + escapeHtml(profile.alias) + '</div>'
+            + '<div style="font-size:12px;color:#666;">' + (profile.online ? 'Online' : 'Offline') + '</div>'
+            + '</div>'
+            + '</div>'
+            + '<p style="margin:8px 0 4px;font-size:13px;">' + escapeHtml(profile.about || 'No bio yet') + '</p>'
+            + '<div class="profile-layers">Mode: ' + escapeHtml(profile.mode || 'N/A') + '</div>'
+            + '<div>Tags: ' + (profile.tags || []).map(t => '<span class="pill" style="margin-right:4px;">' + escapeHtml(t) + '</span>').join('') + '</div>';
+        } catch (err) {
+          tooltipEl.innerHTML = '<div style="color:#b91c1c;">Profile not loaded</div>';
+        }
+      });
+
+      document.addEventListener('mouseout', (e) => {
+        if (!e.target.matches('.profile-hover')) return;
+        tooltipTimeout = setTimeout(() => {
+          tooltipEl.style.display = 'none';
+        }, 200);
+      });
+
+      function escapeHtml(s) {
+        if (typeof s !== 'string') return '';
+        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      }
+    <\/script>`;
+
+    res.send(pageShell("News Feed", html + script, currentProfileId));
   } catch (err) {
     console.error("Error loading newsfeed:", err);
     res.status(500).send("Error loading newsfeed");
@@ -545,15 +728,23 @@ app.post("/newsfeed/comment", async (req, res) => {
     if (!req.session.profileId) return res.status(401).send("Please login to comment");
     const profile = await Profile.findById(req.session.profileId);
     if (!profile) return res.status(404).send("Profile not found");
-    const { postId, text } = req.body;
+    const { postId, parentCommentId, text } = req.body;
     if (!postId || !text || !text.trim()) return res.status(400).send("Invalid comment");
     const post = await Post.findById(postId);
     if (!post) return res.status(404).send("Post not found");
 
-    post.comments = post.comments || [];
-    post.comments.push({ userId: profile._id, alias: profile.alias, text: text.trim(), createdAt: new Date() });
-    await post.save();
+    if (parentCommentId) {
+      const comment = post.comments.id(parentCommentId);
+      if (comment) {
+        comment.replies = comment.replies || [];
+        comment.replies.push({ userId: profile._id, alias: profile.alias, text: text.trim(), createdAt: new Date() });
+      }
+    } else {
+      post.comments = post.comments || [];
+      post.comments.push({ userId: profile._id, alias: profile.alias, text: text.trim(), createdAt: new Date(), replies: [] });
+    }
 
+    await post.save();
     await new Notification({ userId: post.userId, fromId: profile._id, type: 'comment', message: `New comment on your post from ${profile.alias}` }).save();
     res.redirect('/newsfeed');
   } catch (err) {
@@ -573,7 +764,23 @@ app.post("/newsfeed/reaction", async (req, res) => {
     if (!post) return res.status(404).send("Post not found");
     if (!post.reactions) post.reactions = { like: 0, love: 0, haha: 0, wow: 0, sad: 0, angry: 0 };
     if (post.reactions[reaction] == null) return res.status(400).send("Unknown reaction type");
-    post.reactions[reaction] += 1;
+
+    post.reactionsBy = post.reactionsBy || [];
+    const existing = post.reactionsBy.find(r => r.userId.toString() === profile._id.toString());
+
+    if (existing && existing.reaction === reaction) {
+      post.reactionsBy = post.reactionsBy.filter(r => r.userId.toString() !== profile._id.toString());
+      post.reactions[reaction] = Math.max((post.reactions[reaction] || 1) - 1, 0);
+    } else {
+      if (existing && existing.reaction) {
+        post.reactions[existing.reaction] = Math.max((post.reactions[existing.reaction] || 1) - 1, 0);
+        existing.reaction = reaction;
+      } else {
+        post.reactionsBy.push({ userId: profile._id, reaction });
+      }
+      post.reactions[reaction] = (post.reactions[reaction] || 0) + 1;
+    }
+
     await post.save();
 
     await new Notification({ userId: post.userId, fromId: profile._id, type: 'like', message: `${profile.alias} reacted ${reaction} on your post` }).save();
@@ -584,9 +791,48 @@ app.post("/newsfeed/reaction", async (req, res) => {
   }
 });
 
+app.get('/online-status/:profileId', async (req, res) => {
+  const profileId = req.params.profileId;
+  if (!profileId) return res.status(400).json({ online: false });
+  res.json({ online: onlineUsers.has(profileId) });
+});
+
+app.get('/profile-tooltip/:profileId', async (req, res) => {
+  try {
+    const profile = await Profile.findById(req.params.profileId);
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+    const online = onlineUsers.has(profile._id.toString());
+    res.json({
+      alias: profile.alias,
+      about: profile.about,
+      picture: profile.picture ? `/uploads/${profile.picture}` : 'https://images.unsplash.com/photo-1524503033411-c9566986fc8f?auto=format&fit=crop&w=120&q=80',
+      tags: profile.tags || [],
+      mode: profile.mode,
+      online
+    });
+  } catch (err) {
+    console.error('Profile tooltip error:', err);
+    res.status(500).json({ error: 'Failed to load profile tooltip' });
+  }
+});
+
+app.post('/chat/upload', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.session.profileId) return res.status(401).json({ error: 'Unauthorized' });
+    if (!req.file) return res.status(400).json({ error: 'No image provided' });
+    const filename = `${Date.now()}-${(req.file.originalname || 'image').replace(/\s+/g, '_')}`;
+    const dest = path.join('uploads', filename);
+    await fs.promises.writeFile(dest, req.file.buffer);
+    res.json({ imageUrl: `/uploads/${filename}` });
+  } catch (err) {
+    console.error('Chat image upload error:', err);
+    res.status(500).json({ error: 'Upload failed' });
+  }
+});
+
 app.post("/create", upload.single('picture'), async (req, res) => {
   try {
-    const { mode, username, alias, password, contactEmail, contactPhone, about, tags, blurred } = req.body;
+    const { mode, gender, username, alias, password, contactEmail, contactPhone, about, tags, blurred } = req.body;
     if (!mode || !username || !alias || !password || !about || !contactEmail) return res.status(400).send("Missing required fields (username, alias, password, email, about)");
     
     // Check if email already exists
@@ -803,7 +1049,11 @@ app.get("/chat/:roomId/:fromId", async (req, res) => {
 
     // Extract the other user ID from roomId
     const roomParts = roomId.split('_');
-    const toId = roomParts.find(id => id !== fromId && id !== 'room');
+    let toId = roomParts.find(id => id !== fromId && id !== 'room');
+    // Support self-chat (room_123_123) by falling back to fromId
+    if (!toId && roomParts.length >= 2 && roomParts[1] === fromId) {
+      toId = fromId;
+    }
     if (!toId) return res.status(400).send("Invalid room");
 
     const messages = await Message.find({ roomId }).sort({ createdAt: 1 });
@@ -818,7 +1068,8 @@ app.get("/chat/:roomId/:fromId", async (req, res) => {
       const avatarUrl = m.senderPicture ? `/uploads/${m.senderPicture}` : 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=80&q=80';
       const status = m.senderId.toString() === fromId.toString() ? (m.seen ? '<span class="status">Seen</span>' : '<span class="status">Delivered</span>') : '';
       const messageId = m._id ? `data-msg-id="${m._id}"` : '';
-      return `<div class="msg ${sideClass}" ${messageId}><img class="avatar" src="${avatarUrl}" alt="avatar"/><div class="msg-body"><strong>${escapeHtml(m.senderAlias)}</strong> ${escapeHtml(m.text)}<div class="status-wrap">${status}</div></div></div>`;
+      const imageHtml = m.image ? `<div style="margin-top:8px"><img src="${m.image}" alt="attachment" style="max-width:220px;border-radius:10px;"/></div>` : '';
+      return `<div class="msg ${sideClass}" ${messageId}><img class="avatar" src="${avatarUrl}" alt="avatar"/><div class="msg-body"><strong>${escapeHtml(m.senderAlias)}</strong> ${escapeHtml(m.text)}${imageHtml}<div class="status-wrap">${status}</div></div></div>`;
     }).join("");
 
     const html = `<div class="chat-wrap"><h1>💬 Anonymous Private Chat</h1><p><strong>You are chatting as:</strong> ${escapeHtml(profile.alias)}</p><div id="messages">${msgHTML}</div><div id="typingIndicator" class="typing-indicator" style="min-height:20px;margin:8px 0;color:#666;">&nbsp;</div><div class="chat-row"><button id="emojiBtn" class="btn btn-gray" type="button" style="margin-right:8px;">😊</button><input type="file" id="attachmentInput" style="display:none;" accept="image/*"/><button id="attachBtn" class="btn btn-gray" type="button" style="margin-right:8px;">📎</button><input id="msgInput" placeholder="Type an anonymous message (Shift+Enter newline, Enter send)" style="flex:1;"/><button id="sendBtn" class="btn btn-blue" type="button">Send</button></div><div class="top-actions"><a class="btn btn-gray" href="/messages/${fromId}">Back to Messages</a></div></div><script src="/socket.io/socket.io.js"><\/script><script>
@@ -836,7 +1087,7 @@ app.get("/chat/:roomId/:fromId", async (req, res) => {
 
       socket.emit('joinRoom', { roomId });
 
-      function appendMessage(sender, text, cls, avatar, statusText, messageId) {
+      function appendMessage(sender, text, cls, avatar, statusText, messageId, imageUrl) {
         const div = document.createElement('div');
         div.className = 'msg ' + (cls || 'received');
         if (messageId) {
@@ -853,7 +1104,19 @@ app.get("/chat/:roomId/:fromId", async (req, res) => {
         const strong = document.createElement('strong');
         strong.textContent = sender + ': ';
         body.appendChild(strong);
-        body.appendChild(document.createTextNode(text));
+
+        if (text) {
+          body.appendChild(document.createTextNode(text));
+        }
+
+        if (imageUrl) {
+          const imageEl = document.createElement('img');
+          imageEl.style.maxWidth = '220px';
+          imageEl.style.marginTop = '8px';
+          imageEl.style.borderRadius = '10px';
+          imageEl.src = imageUrl;
+          body.appendChild(imageEl);
+        }
 
         if (statusText) {
           const statusEl = document.createElement('div');
@@ -867,14 +1130,14 @@ app.get("/chat/:roomId/:fromId", async (req, res) => {
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
       }
 
-      function sendMsg() {
+      function sendMsg(imageUrl) {
         const text = msgInput.value.trim();
-        if (!text) return;
-        socket.emit('privateMessage', { roomId, text, senderId, senderAlias });
+        if (!text && !imageUrl) return;
+        socket.emit('privateMessage', { roomId, text, image: imageUrl, senderId, senderAlias });
         msgInput.value = '';
       }
 
-      sendBtn.addEventListener('click', sendMsg);
+      sendBtn.addEventListener('click', () => sendMsg());
 
       let typingTimeout;
       msgInput.addEventListener('input', () => {
@@ -897,11 +1160,11 @@ app.get("/chat/:roomId/:fromId", async (req, res) => {
 
       socket.on('privateMessage', (data) => {
         if (data.senderId === senderId) {
-          appendMessage(data.senderAlias, data.text, 'sent', data.senderPicture, data.seen ? 'Seen' : 'Delivered', data.messageId);
+          appendMessage(data.senderAlias, data.text, 'sent', data.senderPicture, data.seen ? 'Seen' : 'Delivered', data.messageId, data.image);
           return;
         }
         // incoming message
-        appendMessage(data.senderAlias, data.text, 'received', data.senderPicture, 'Delivered', data.messageId);
+        appendMessage(data.senderAlias, data.text, 'received', data.senderPicture, 'Delivered', data.messageId, data.image);
         socket.emit('messageSeen', { messageId: data.messageId });
       });
 
@@ -923,9 +1186,29 @@ app.get("/chat/:roomId/:fromId", async (req, res) => {
       });
 
       attachBtn.addEventListener('click', () => attachmentInput.click());
-      attachmentInput.addEventListener('change', () => {
+      attachmentInput.addEventListener('change', async () => {
         if (!attachmentInput.files.length) return;
-        alert('Image upload is available in second-phase (future enhancement)');
+        const file = attachmentInput.files[0];
+        const formData = new FormData();
+        formData.append('image', file);
+        try {
+          const response = await fetch('/chat/upload', { method: 'POST', body: formData });
+          if (!response.ok) {
+            alert('Image upload failed');
+            return;
+          }
+          const result = await response.json();
+          if (result.imageUrl) {
+            sendMsg(result.imageUrl);
+          } else {
+            alert('Image upload returned no URL');
+          }
+        } catch (err) {
+          console.error('Upload error', err);
+          alert('Error uploading image');
+        } finally {
+          attachmentInput.value = '';
+        }
       });
     <\/script>`;
     res.send(pageShell("Chat", html, req.params.fromId));
@@ -1130,8 +1413,8 @@ io.on("connection", (socket) => {
   });
 
   socket.on("privateMessage", async (data) => {
-    const { roomId, text, senderId, senderAlias } = data;
-    if (!roomId || !text || !senderId) return;
+    const { roomId, text, image, senderId, senderAlias } = data;
+    if (!roomId || !senderId || (!text && !image)) return;
 
     const senderProfile = await Profile.findById(senderId);
     const senderPicture = senderProfile ? senderProfile.picture : null;
@@ -1141,7 +1424,8 @@ io.on("connection", (socket) => {
       senderId,
       senderAlias,
       senderPicture,
-      text,
+      text: text || '',
+      image: image || '',
       delivered: true,
       seen: false,
       read: true
@@ -1152,6 +1436,7 @@ io.on("connection", (socket) => {
     io.to(roomId).emit("privateMessage", {
       messageId: message._id,
       text,
+      image: message.image,
       senderAlias,
       senderId,
       senderPicture,

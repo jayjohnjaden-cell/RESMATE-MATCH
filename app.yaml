@@ -1,0 +1,12 @@
+runtime: nodejs20
+instance_class: F2
+env: standard
+handlers:
+  - url: /uploads/.*
+    static_files: uploads/\1
+    upload: uploads/.*
+  - url: /.*
+    script: auto
+env_variables:
+  NODE_ENV: production
+  MONGODB_URI: mongodb+srv://your-atlas-connection-string-here
